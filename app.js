@@ -263,7 +263,7 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
 
   const root = document.querySelector('#app');
   const toastNode = document.querySelector('#toast');
-  const SAVE_KEY = 'ocean-night-record-v2';
+  const SAVE_KEY = 'ocean-night-record-v14';
   const MAX_SLOTS = 7;
 
   const ITEMS = {
@@ -273,23 +273,27 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
     blueFilter: { name: '청색 필터', glyph: '▣', description: '어두운 곳의 숨은 글씨를 읽게 해 주는 투명 필터.' },
     restoredNote: { name: '복원된 기록', glyph: '▤', description: 'ONLY · SECOND · THREE · 2006에 붉은 밑줄이 있다.' },
     accessCard: { name: 'DS실 카드', glyph: '▥', description: 'DS실 출입 카드.' },
-    pianoKey: { name: '피아노 열쇠', glyph: '♩', description: '오션 라운지의 오래된 피아노 덮개 열쇠.' }
+    pianoKey: { name: '피아노 열쇠', glyph: '♩', description: '오션 라운지의 오래된 피아노 덮개 열쇠.' },
+    battery: { name: '낡은 건전지', glyph: '▰', description: '꿈나래터 방석 아래에서 찾았다. 스터디카페의 카세트에 맞을 것 같다.' }
   };
 
   const SCENES = {
-    exterior: { name: '오션중학교 · 중앙 현관', image: 'horror-exterior.png?v=13' },
-    classFront: { name: '2층 일반교실 · 앞쪽', image: 'horror-class-front.png?v=13' },
-    classSide: { name: '2층 일반교실 · 창가', image: 'horror-class-side.png?v=13' },
-    homebase: { name: '2층 홈베이스', image: 'horror-homebase.png?v=13' },
-    library: { name: '도서관 · 자료 열람실', image: 'horror-library.png?v=13' },
-    digital: { name: 'DS실', image: 'horror-digital.png?v=13' },
-    lounge: { name: '오션 라운지', image: 'horror-lounge.png?v=13' }
+    exterior: { name: '오션중학교 · 중앙 현관', image: 'assets/horror-exterior.png?v=6' },
+    classFront: { name: '2층 일반교실 · 앞쪽', image: 'assets/horror-class-front.png?v=6' },
+    classSide: { name: '2층 일반교실 · 창가', image: 'assets/horror-class-side.png?v=6' },
+    homebase: { name: '2층 홈베이스', image: 'assets/horror-homebase.png?v=6' },
+    library: { name: '도서관 · 자료 열람실', image: 'assets/horror-library.png?v=6' },
+    digital: { name: 'DS실', image: 'assets/horror-digital.png?v=6' },
+    dream: { name: '꿈나래터 · 계단 광장', image: 'assets/horror-dream-v2.png?v=14' },
+    study: { name: '미디어월드 · 스터디카페', image: 'assets/horror-study-v2.png?v=14' },
+    lounge: { name: '오션 라운지', image: 'assets/horror-lounge.png?v=6' }
   };
 
   const freshState = () => ({
     screen: 'start', scene: 'exterior', inventory: [], selected: [], journal: [],
     flags: {}, log: '정문은 잠기지 않았다. 안쪽에서 희미한 전자음이 들린다.',
-    modal: null, startedAt: 0, elapsed: 0, mistakes: 0, hints: 0, sequenceStep: 0, sequenceChosen: [], pianoNotes: [], soundOn: true
+    modal: null, startedAt: 0, elapsed: 0, mistakes: 0, hints: 0, sequenceStep: 0, sequenceChosen: [], pianoNotes: [], melodyNotes: [], soundOn: true,
+    catches: 0, chaseSeen: [], chaseSolution: null
   });
 
   let state = freshState();
@@ -298,6 +302,7 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
   let audioContext = null;
   let ambientStarted = false;
   let ambientMaster = null;
+  let chaseTimer = null;
 
   function safeLoad() {
     try {
@@ -420,7 +425,9 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
     if (!state.flags.libraryOpen) return ['네 개의 밑줄', '복원된 기록의 강조어를 숫자로 바꿔 도서관 문을 열어라.', '영어 서수와 연도를 관찰하세요.'];
     if (!state.flags.librarySolved) return ['어둠 속 어휘', '청색 필터로 도서관 서가의 숨은 글씨를 읽어라.', '필터를 선택한 상태로 서가를 조사하세요.'];
     if (!state.flags.digitalSolved) return ['끊어진 문장', '출입 카드로 DS실에 들어가 세 문장을 복구하라.', '5과의 의사소통 표현, 현재완료와 to부정사를 떠올리세요.'];
-    if (!state.flags.pianoUnlocked) return ['마지막 연주', '피아노 악보의 네 문장을 풀어 건반 순서를 찾아라.', '각 문장의 정답이 몇 번째 선택지인지 차례로 연주하세요.'];
+    if (!state.flags.dreamSolved) return ['방석 아래의 전류', '꿈나래터의 방석 배열을 관찰해 숨은 건전지를 찾아라.', '붉은 방석 뒤에는 회색 방석 두 개가 반복됩니다.'];
+    if (!state.flags.studySolved) return ['멈춘 카세트', '건전지로 카세트를 살리고 들려준 네 음을 그대로 재현하라.', '먼저 재생을 누르고 램프 건반 1·2·3을 순서대로 누르세요.'];
+    if (!state.flags.pianoUnlocked) return ['마지막 연주', '오션 라운지 피아노의 네 문장을 풀어 건반 순서를 찾아라.', '각 문장의 정답이 몇 번째 선택지인지 차례로 연주하세요.'];
     if (!state.flags.finished) return ['마지막 증언', '피아노 안의 기록을 읽고 우정의 역사를 완성하라.', '여러 방에서 모은 기록을 다시 확인하세요.'];
     return ['탈출 성공', '오션중학교의 21시 기록을 복원했다.', '모든 단서가 하나의 역사로 이어졌다.'];
   }
@@ -453,11 +460,21 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
       digital: [
         { x: 38, y: 38, label: '켜진 대형 화면', action: 'monitor' },
         { x: 7, y: 49, label: '홈베이스로 돌아간다', kind: 'exit', action: 'go', value: 'homebase' },
-        ...(state.flags.digitalSolved ? [{ x: 88, y: 49, label: '오션 라운지로 간다', kind: 'exit', action: 'go', value: 'lounge' }] : [])
+        ...(state.flags.digitalSolved ? [{ x: 88, y: 49, label: '꿈나래터로 간다', kind: 'exit', action: 'go', value: 'dream' }] : [])
+      ],
+      dream: [
+        { x: 34, y: 57, label: state.flags.dreamSolved ? '살펴본 방석' : '붉고 회색인 방석 배열', action: 'cushions' },
+        { x: 7, y: 55, label: 'DS실로 돌아간다', kind: 'exit', action: 'go', value: 'digital' },
+        ...(state.flags.dreamSolved ? [{ x: 89, y: 53, label: '스터디카페로 간다', kind: 'exit', action: 'go', value: 'study' }] : [])
+      ],
+      study: [
+        { x: 66, y: 50, label: '멈춘 카세트 플레이어', action: 'cassette' },
+        { x: 7, y: 54, label: '꿈나래터로 돌아간다', kind: 'exit', action: 'go', value: 'dream' },
+        ...(state.flags.studySolved ? [{ x: 91, y: 54, label: '오션 라운지로 간다', kind: 'exit', action: 'go', value: 'lounge' }] : [])
       ],
       lounge: [
         { x: 83, y: 54, label: '잠긴 피아노', action: 'piano' },
-        { x: 7, y: 53, label: 'DS실로 돌아간다', kind: 'exit', action: 'go', value: 'digital' }
+        { x: 7, y: 53, label: '스터디카페로 돌아간다', kind: 'exit', action: 'go', value: 'study' }
       ]
     };
     return spots[state.scene] || [];
@@ -485,10 +502,14 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
     if (type === 'libraryKeypad') body = `<div class="eyebrow">도서관 방화문</div><h2>4자리 기록 번호</h2><p>복원된 종이의 붉은 밑줄 네 개가 순서대로 열쇠가 된다.</p><label class="field-label" for="codeAnswer">암호 입력</label><input id="codeAnswer" class="code-input" inputmode="numeric" maxlength="4" autocomplete="off"><p class="error" data-error></p><div class="modal-actions"><button class="button" data-action="closeModal">취소</button><button class="button primary" data-action="submitCode">해제</button></div>`;
     if (type === 'shelfPuzzle') body = `<div class="eyebrow">청색 필터로 드러난 글씨</div><h2>세 권의 책</h2><p>각 뜻풀이에 맞는 5과 단어를 영어로 입력하라. 세 단어가 모두 맞아야 서랍이 열린다.</p><label class="field-label">1. a person who travels to a place for pleasure</label><input class="code-input answer-input" data-vocab="0" autocomplete="off"><label class="field-label">2. a person who wears a uniform and protects a country</label><input class="code-input answer-input" data-vocab="1" autocomplete="off"><label class="field-label">3. to show great respect to someone</label><input class="code-input answer-input" data-vocab="2" autocomplete="off"><p class="error" data-error></p><div class="modal-actions"><button class="button" data-action="closeModal">나중에</button><button class="button primary" data-action="submitVocab">서가 조사</button></div>`;
     if (type === 'sequence') body = sequenceMarkup();
+    if (type === 'cushions') body = `<div class="eyebrow">꿈나래터 · 방석 관찰</div><h2>비어 있는 마지막 자리</h2><p>계단의 방석을 가까이 보니 같은 세 칸 규칙이 반복된다. 빈칸에 놓여야 할 색을 고르자.</p><div class="cushion-sequence"><i class="red"></i><i></i><i></i><i class="red"></i><i></i><i></i><i class="mystery">?</i></div><div class="board-options"><button class="token cushion-choice red" data-action="answerCushions" data-value="red">붉은 방석</button><button class="token cushion-choice gray" data-action="answerCushions" data-value="gray">회색 방석</button><button class="token cushion-choice blue" data-action="answerCushions" data-value="blue">파란 방석</button></div><p class="error" data-error></p><div class="modal-actions"><button class="button" data-action="closeModal">더 관찰하기</button></div>`;
+    if (type === 'cassette') body = cassetteMarkup();
     if (type === 'pianoCode') body = pianoCodeMarkup();
     if (type === 'final') body = `<div class="eyebrow">피아노 내부의 마지막 기록</div><h2>새로운 우정의 증언</h2><p>앞에서 풀지 않았던 세 문장의 빈칸을 영어로 완성하라.</p><label class="field-label">1. Ethiopian soldiers used their own money to ____ Korean children.</label><input class="code-input answer-input" data-final="0" autocomplete="off"><label class="field-label">2. The Memorial Hall in Chuncheon has three round ____.</label><input class="code-input answer-input" data-final="1" autocomplete="off"><label class="field-label">3. Kate ____ to Ethiopia once. (두 단어)</label><input class="code-input answer-input" data-final="2" autocomplete="off"><p class="error" data-error></p><div class="modal-actions"><button class="button" data-action="closeModal">기록 다시 보기</button><button class="button primary" data-action="submitFinal">기록 완성</button></div>`;
     if (type === 'journal') body = `<div class="eyebrow">조사 수첩</div><h2>발견한 기록</h2><ul class="journal-list">${state.journal.length ? state.journal.map(x => `<li>${x}</li>`).join('') : '<li>아직 기록한 단서가 없다.</li>'}</ul><div class="modal-actions"><button class="button primary" data-action="closeModal">닫기</button></div>`;
     if (type === 'hint') body = `<div class="eyebrow">현재 단계 힌트</div><h2>조금만 더 자세히</h2><p>${hintText()}</p><div class="modal-actions"><button class="button primary" data-action="closeModal">계속 조사</button></div>`;
+    if (type === 'chase') body = `<div class="chase-clock"><span></span></div><div class="chase-stage"><img class="hero-sprite" src="assets/hero-sword.png?v=14" alt="커다란 파란 스펀지 대검을 멘 학생"><div class="chase-copy"><div class="eyebrow">토끼 안전요원 접근 중 · 8초</div><h2>들켰다! 어디로 피할까?</h2><p>폭신한 발소리가 빠르게 가까워진다. 주변 공간과 소품을 보고 가장 안전한 행동을 고르자.</p><div class="chase-actions">${chaseChoices()}</div><small>틀리거나 시간이 끝나면 안전도 한 칸이 줄어듭니다.</small></div><img class="rabbit-sprite" src="assets/rabbit-mascot.png?v=14" alt="귀여운 토끼 탈을 쓴 안전요원"></div>`;
+    if (type === 'gameOver') body = `<div class="gameover-rabbit">🐰</div><div class="eyebrow">GAME OVER · 토끼 안전요원에게 발견됨</div><h2>“방과후 학생 발견!”</h2><p>무서운 일은 일어나지 않았다. 토끼 탈 안전요원이 출입 기록표를 내밀 뿐이다. 체크포인트에서 다시 숨으면 아이템과 퍼즐 진행은 그대로 유지된다.</p><div class="modal-actions"><button class="button primary" data-action="checkpoint">체크포인트에서 계속</button><button class="button" data-action="restart">처음부터</button></div>`;
     if (type === 'item') {
       const item = state.modalItem;
       body = `<div class="eyebrow">소지품</div><h2>${ITEMS[item].glyph} ${ITEMS[item].name}</h2><p>${ITEMS[item].description}</p><div class="modal-actions"><button class="button primary" data-action="closeModal">닫기</button></div>`;
@@ -508,6 +529,19 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
     return `<div class="eyebrow">화면 ${state.sequenceStep + 1} / ${sequences.length}</div><h2>끊어진 문장 신호</h2><p>${seq.prompt}. 아래 조각을 올바른 순서로 누르세요.</p><div class="token-board" aria-label="조립한 문장">${chosen.map((t, i) => `<button class="token" data-action="removeToken" data-value="${i}">${t}</button>`).join('') || '<span style="color:var(--muted)">여기에 문장을 조립하세요.</span>'}</div><div class="token-board" aria-label="문장 조각">${seq.tokens.map(t => `<button class="token ${chosen.includes(t) ? 'chosen' : ''}" data-action="addToken" data-value="${t}" ${chosen.includes(t) ? 'disabled' : ''}>${t}</button>`).join('')}</div><p class="error" data-error></p><div class="modal-actions"><button class="button" data-action="resetTokens">다시 배열</button><button class="button primary" data-action="submitSequence">신호 전송</button></div>`;
   }
 
+  function cassetteMarkup() {
+    const notes = state.melodyNotes || [];
+    return `<div class="eyebrow">미디어월드 · 카세트 플레이어</div><h2>네 번의 안내음</h2><p>건전지를 넣자 세 개의 램프가 켜졌다. 재생 버튼으로 안내음을 듣고 같은 순서로 눌러라.</p><button class="cassette-play" data-action="playMelody">▶ 안내음 재생</button><div class="melody-display">${notes.length ? notes.map(n => `<span>${n}</span>`).join('') : '<em>소리를 먼저 들어 보세요</em>'}</div><div class="lamp-keys">${[1,2,3].map(n => `<button data-action="melodyNote" data-value="${n}"><b>${n}</b><small>${['낮은 음','가운데 음','높은 음'][n-1]}</small></button>`).join('')}</div><p class="error" data-error></p><div class="modal-actions"><button class="button" data-action="resetMelody">다시 입력</button><button class="button primary" data-action="submitMelody">패턴 확인</button></div>`;
+  }
+
+  function chaseChoices() {
+    const sets = {
+      study: [['desk','책상 아래로 조용히 숨기'],['run','유리문 쪽으로 달리기'],['lamp','탁상등을 모두 켜기']],
+      lounge: [['sword','스펀지 대검으로 문을 살짝 받치기'],['piano','피아노를 크게 두드리기'],['freeze','그 자리에 꼼짝 않고 서 있기']]
+    };
+    return (sets[state.scene] || sets.study).map(([value,label]) => `<button class="chase-choice" data-action="chaseChoice" data-value="${value}">${label}</button>`).join('');
+  }
+
   function pianoCodeMarkup() {
     const notes = state.pianoNotes || [];
     const noteNames = ['도', '레', '미', '파', '솔', '라', '시'];
@@ -520,19 +554,21 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
     if (!state.flags.libraryOpen && state.flags.noteCombined) return 'ONLY=1, SECOND=2, THREE=3, 그리고 2006에서는 마지막 숫자만 읽습니다.';
     if (!state.flags.librarySolved && state.flags.libraryOpen) return '청색 필터를 먼저 인벤토리에서 선택한 다음, 가운데 곡선 서가를 누르세요.';
     if (!state.flags.digitalSolved && state.flags.librarySolved) return '현재완료는 has had, 목적을 나타내는 to부정사는 to see입니다.';
-    if (!state.flags.pianoUnlocked && state.flags.digitalSolved) return '네 문장의 정답 선택지 번호는 차례로 2, 2, 1, 2입니다.';
+    if (!state.flags.dreamSolved && state.flags.digitalSolved) return '방석은 붉은색-회색-회색의 세 칸 규칙으로 반복됩니다.';
+    if (!state.flags.studySolved && state.flags.dreamSolved) return '카세트 안내음은 3-1-2-3입니다. 소리를 켜고 재생 버튼을 눌러도 됩니다.';
+    if (!state.flags.pianoUnlocked && state.flags.studySolved) return '네 문장의 정답 선택지 번호는 차례로 2, 2, 1, 2입니다.';
     return base;
   }
 
   function render() {
     if (state.screen === 'start') {
-      root.innerHTML = `<main class="start-screen"><div class="start-bg"></div><section class="start-card"><div class="eyebrow">UNIT 5 · DISCOVER KOREA</div><h1>21시의 기록<span>오션중학교 방과후 교내 조사</span></h1><p>방과후 수업이 끝난 뒤, 학교의 모든 전자문이 잠겼다. 흩어진 우정의 기록을 복원해야만 중앙 현관을 다시 열 수 있다.</p><div class="warning">장면의 희미한 표식을 조사하세요. 물건은 인벤토리에서 선택하거나 두 개를 조합할 수 있습니다. 공포 연출은 있지만 괴물과 잔혹 표현은 없습니다.</div><button class="button primary" data-action="start">학교에 들어가기</button></section></main>`;
+      root.innerHTML = `<main class="start-screen"><div class="start-bg"></div><img class="start-hero" src="assets/hero-sword.png?v=14" alt="커다란 파란 스펀지 대검을 멘 학생"><section class="start-card"><div class="eyebrow">UNIT 5 · DISCOVER KOREA · 약 20분</div><h1>21시의 기록<span>오션중학교 방과후 교내 조사</span></h1><p>방과후 수업이 끝난 뒤, 학교의 모든 전자문이 잠겼다. 흩어진 우정의 기록을 복원하고, 순찰 중인 토끼 탈 안전요원을 피해 중앙 현관을 다시 열어야 한다.</p><div class="warning">관찰·아이템 조합·색 규칙·소리 기억·영어 문제를 차례로 해결합니다. 추격과 게임오버가 있지만 잔혹 표현이나 큰 놀람 연출은 없습니다. 등에 멘 커다란 대검은 안전한 스펀지 소품입니다.</div><button class="button primary" data-action="start">학교에 들어가기</button></section></main>`;
       bind(); return;
     }
     if (state.screen === 'ending') { renderEnding(); return; }
     const [chapter, title, sub] = objective();
     const scene = SCENES[state.scene];
-    root.innerHTML = `<main class="game"><div class="scene ${transitioning ? 'is-transitioning' : ''}"><img class="scene-image" src="${scene.image}" alt="${scene.name}" draggable="false">${hotspots().map(hotspotMarkup).join('')}</div><div class="grain"></div><div class="hud"><div class="topbar"><section class="objective"><div class="eyebrow">${chapter}</div><strong>${title}</strong><small>${sub}</small></section><div class="top-actions"><div class="status-chip">◷ <b data-clock>${timeText()}</b></div><button class="icon-button sound-button" data-action="toggleSound" aria-label="${state.soundOn ? '소리 끄기' : '소리 켜기'}">${state.soundOn ? '♪' : '×'} <span>${state.soundOn ? '소리' : '음소거'}</span></button><button class="icon-button" data-action="showHint" aria-label="힌트">? <span>힌트</span></button><button class="icon-button" data-action="showJournal" aria-label="조사 수첩">▤ <span>수첩</span></button></div></div><div class="scene-label">${scene.name}</div><div class="log-box" aria-live="polite"><strong>조사</strong>${state.log}</div></div><section class="inventory-wrap"><div class="inventory-head"><span>INVENTORY · ${state.inventory.length}/${MAX_SLOTS}</span><span>${state.selected.length ? `${state.selected.length}개 선택됨` : '아이템을 선택하세요'}</span></div><div class="inventory">${inventoryMarkup()}<button class="combine-button" data-action="combine" ${state.selected.length !== 2 ? 'disabled' : ''}>조합</button></div></section>${modalMarkup()}</main>`;
+    root.innerHTML = `<main class="game"><div class="scene ${transitioning ? 'is-transitioning' : ''}"><img class="scene-image" src="${scene.image}" alt="${scene.name}" draggable="false">${hotspots().map(hotspotMarkup).join('')}</div><div class="grain"></div><div class="hud"><div class="topbar"><section class="objective"><div class="eyebrow">${chapter}</div><strong>${title}</strong><small>${sub}</small></section><div class="top-actions"><div class="status-chip safety" title="토끼에게 두 번 잡히면 게임오버">안전도 ${state.catches === 0 ? '♥♥' : '♥♡'}</div><div class="status-chip">◷ <b data-clock>${timeText()}</b></div><button class="icon-button sound-button" data-action="toggleSound" aria-label="${state.soundOn ? '소리 끄기' : '소리 켜기'}">${state.soundOn ? '♪' : '×'} <span>${state.soundOn ? '소리' : '음소거'}</span></button><button class="icon-button" data-action="showHint" aria-label="힌트">? <span>힌트</span></button><button class="icon-button" data-action="showJournal" aria-label="조사 수첩">▤ <span>수첩</span></button></div></div><div class="scene-label">${scene.name}</div><div class="log-box" aria-live="polite"><strong>조사</strong>${state.log}</div></div><section class="inventory-wrap"><div class="inventory-head"><span>INVENTORY · ${state.inventory.length}/${MAX_SLOTS}</span><span>${state.selected.length ? `${state.selected.length}개 선택됨` : '아이템을 선택하세요'}</span></div><div class="inventory">${inventoryMarkup()}<button class="combine-button" data-action="combine" ${state.selected.length !== 2 ? 'disabled' : ''}>조합</button></div></section>${modalMarkup()}</main>`;
     bind(); save();
   }
 
@@ -557,9 +593,12 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
         homebase: '사물함들이 늘어서 있다. 3번 문에 긁힌 자국이 선명하다.',
         library: '오래된 나무 냄새가 난다. 가운데 서가에 푸른 흔적이 번져 있다.',
         digital: 'DS실의 빈 모니터 사이에서 대형 화면 하나만 불규칙하게 깜박인다.',
+        dream: '넓은 나무 계단에 붉고 회색인 방석들이 일정한 간격으로 놓여 있다.',
+        study: '따뜻한 탁상등 사이에서 낡은 카세트 플레이어가 희미하게 켜져 있다.',
         lounge: '달빛 아래 피아노 한 대만 따뜻한 빛을 받고 있다.'
       };
       state.log = messages[scene] || '다시 익숙한 장소로 돌아왔다.'; render();
+      setTimeout(() => maybeTriggerChase(scene), 260);
     }, 90);
   }
 
@@ -592,6 +631,15 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
     if (action === 'removeToken') { state.sequenceChosen.splice(Number(value), 1); return render(); }
     if (action === 'resetTokens') { state.sequenceChosen = []; return render(); }
     if (action === 'submitSequence') return submitSequence();
+    if (action === 'cushions') return inspectCushions();
+    if (action === 'answerCushions') return answerCushions(value);
+    if (action === 'cassette') return inspectCassette();
+    if (action === 'playMelody') return playMelody();
+    if (action === 'melodyNote') { playPianoNote(Number(value) + 1); if ((state.melodyNotes || []).length < 4) state.melodyNotes.push(Number(value)); return render(); }
+    if (action === 'resetMelody') { state.melodyNotes = []; return render(); }
+    if (action === 'submitMelody') return submitMelody();
+    if (action === 'chaseChoice') return resolveChase(value);
+    if (action === 'checkpoint') return checkpoint();
     if (action === 'piano') return piano();
     if (action === 'pianoNote') { playPianoNote(value); if ((state.pianoNotes || []).length < 4) state.pianoNotes.push(value); return render(); }
     if (action === 'resetPiano') { state.pianoNotes = []; return render(); }
@@ -662,6 +710,7 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
   }
 
   function digitalDoor() {
+    if (state.flags.digitalSolved) { state.selected = []; return go('digital'); }
     if (!state.selected.includes('accessCard')) { state.log = '카드 인식기가 붉게 깜박인다. 출입 카드를 선택해야 한다.'; return render(); }
     state.selected = []; go('digital');
   }
@@ -675,7 +724,71 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
     const seq = sequences[state.sequenceStep];
     if (state.sequenceChosen.join('|') !== seq.answer.join('|')) return error('신호가 끊겼다. 문장 성분과 시제를 다시 확인하자.');
     if (state.sequenceStep < sequences.length - 1) { state.sequenceStep += 1; state.sequenceChosen = []; notify(`${state.sequenceStep}번째 문장 복구 완료.`); return render(); }
-    removeItem('accessCard'); addItem('pianoKey'); state.flags.digitalSolved = true; state.selected = []; state.modal = null; state.log = '세 문장이 연결되며 화면 아래에서 작은 피아노 열쇠가 떨어졌다.'; addJournal('현재완료: Ethiopia has had strong ties with Korea for many years.'); addJournal('to부정사의 형용사적 용법: many cultural items to see.'); addJournal('여행 소감 묻기: How did you like the trip?'); notify('피아노 열쇠를 얻었다.'); render();
+    addItem('pianoKey'); state.flags.digitalSolved = true; state.selected = []; state.modal = null; state.log = '세 문장이 연결되며 화면 아래에서 작은 피아노 열쇠가 떨어졌다. DS실 카드는 계속 사용할 수 있다.'; addJournal('현재완료: Ethiopia has had strong ties with Korea for many years.'); addJournal('to부정사의 형용사적 용법: many cultural items to see.'); addJournal('여행 소감 묻기: How did you like the trip?'); notify('피아노 열쇠를 얻었다.'); render();
+  }
+
+  function inspectCushions() {
+    if (state.flags.dreamSolved) { state.log = '들춰 본 붉은 방석 아래에는 건전지가 있던 빈 홈만 남아 있다.'; return render(); }
+    openModal('cushions');
+  }
+
+  function answerCushions(answer) {
+    if (answer !== 'red') return error('방석이 맞지 않는다. 붉은색 다음에 회색 두 개가 반복되는지 다시 보자.');
+    addItem('battery'); state.flags.dreamSolved = true; state.modal = null;
+    state.log = '마지막 자리에 붉은 방석을 옮기자, 아래 홈에서 낡은 건전지가 굴러 나왔다.';
+    addJournal('꿈나래터 방석 규칙: RED-GRAY-GRAY 반복. 빈칸은 RED.');
+    notify('낡은 건전지를 얻었다.'); render();
+  }
+
+  function inspectCassette() {
+    if (state.flags.studySolved) { state.log = '카세트의 세 램프가 3-1-2-3 순서로 천천히 깜박인다.'; return render(); }
+    if (state.flags.cassettePowered) { state.melodyNotes = []; return openModal('cassette'); }
+    if (!state.selected.includes('battery')) { state.log = has('battery') ? '건전지를 인벤토리에서 선택해 카세트에 넣자.' : '카세트에 전원이 없다. 어딘가에서 건전지를 찾아야 한다.'; return render(); }
+    if (!state.flags.cassettePowered) { removeItem('battery'); state.flags.cassettePowered = true; addJournal('스터디카페 카세트에 꿈나래터의 건전지를 넣었다.'); }
+    state.melodyNotes = []; openModal('cassette');
+  }
+
+  function playMelody() {
+    const pattern = [3, 1, 2, 3];
+    pattern.forEach((note, index) => setTimeout(() => playPianoNote(note + 1), index * 430));
+    notify('안내음이 네 번 울린다.');
+  }
+
+  function submitMelody() {
+    if ((state.melodyNotes || []).join('') !== '3123') return error('카세트가 되감긴다. 높고 낮은 음의 순서를 다시 들어 보자.');
+    state.flags.studySolved = true; state.melodyNotes = []; state.modal = null;
+    state.log = '3-1-2-3 패턴을 재현하자 카세트에서 “라운지 피아노”라는 안내가 흘러나왔다.';
+    addJournal('카세트 안내음: 높은 음(3) - 낮은 음(1) - 가운데 음(2) - 높은 음(3).');
+    notify('오션 라운지 통로가 열렸다.'); render();
+  }
+
+  function maybeTriggerChase(scene) {
+    const solutions = { study: 'desk', lounge: 'sword' };
+    if (!solutions[scene] || state.chaseSeen.includes(scene) || state.screen !== 'game') return;
+    state.chaseSeen.push(scene); state.chaseSolution = solutions[scene]; state.modal = 'chase'; render();
+    clearTimeout(chaseTimer); chaseTimer = setTimeout(() => caughtByRabbit('시간이 끝났다. 토끼 안전요원이 살며시 어깨를 톡 쳤다.'), 8000);
+  }
+
+  function resolveChase(choice) {
+    clearTimeout(chaseTimer);
+    if (choice !== state.chaseSolution) return caughtByRabbit('선택한 길 앞에 토끼 안전요원의 커다란 슬리퍼가 나타났다.');
+    state.modal = null; state.chaseSolution = null;
+    state.log = state.scene === 'study' ? '책상 아래에서 발소리가 멀어질 때까지 기다렸다.' : '파란 스펀지 대검으로 문을 조용히 받치자 토끼 안전요원이 다른 복도로 지나갔다.';
+    addJournal(state.scene === 'study' ? '추격 회피: 스터디카페의 긴 책상 아래에 숨었다.' : '추격 회피: 안전한 스펀지 대검으로 라운지 문을 받쳤다.');
+    notify('토끼 안전요원을 피했다!'); render();
+  }
+
+  function caughtByRabbit(message) {
+    clearTimeout(chaseTimer); state.catches += 1; state.mistakes += 1; state.chaseSolution = null;
+    if (state.catches >= 2) { state.modal = 'gameOver'; state.log = message; render(); return; }
+    state.modal = null; state.log = `${message} 아직 한 번 더 기회가 있다.`; notify('안전도 1 감소'); render();
+  }
+
+  function checkpoint() {
+    state.catches = 0; state.modal = null; state.chaseSolution = null;
+    state.elapsed = currentElapsed() + 30; state.startedAt = Date.now();
+    state.log = '출입 기록을 쓰고 체크포인트로 돌아왔다. 아이템과 퍼즐 기록은 그대로다.';
+    notify('30초 페널티 · 조사 계속'); render();
   }
 
   function piano() {
