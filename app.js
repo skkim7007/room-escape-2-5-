@@ -277,13 +277,13 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
   };
 
   const SCENES = {
-    exterior: { name: '오션중학교 · 중앙 현관', image: 'assets/horror-exterior.png?v=6' },
-    classFront: { name: '2층 일반교실 · 앞쪽', image: 'assets/horror-class-front.png?v=6' },
-    classSide: { name: '2층 일반교실 · 창가', image: 'assets/horror-class-side.png?v=6' },
-    homebase: { name: '2층 홈베이스', image: 'assets/horror-homebase.png?v=6' },
-    library: { name: '도서관 · 자료 열람실', image: 'assets/horror-library.png?v=6' },
-    digital: { name: 'DS실', image: 'assets/horror-digital.png?v=6' },
-    lounge: { name: '오션 라운지', image: 'assets/horror-lounge.png?v=6' }
+    exterior: { name: '오션중학교 · 중앙 현관', image: 'horror-exterior.png?v=13' },
+    classFront: { name: '2층 일반교실 · 앞쪽', image: 'horror-class-front.png?v=13' },
+    classSide: { name: '2층 일반교실 · 창가', image: 'horror-class-side.png?v=13' },
+    homebase: { name: '2층 홈베이스', image: 'horror-homebase.png?v=13' },
+    library: { name: '도서관 · 자료 열람실', image: 'horror-library.png?v=13' },
+    digital: { name: 'DS실', image: 'horror-digital.png?v=13' },
+    lounge: { name: '오션 라운지', image: 'horror-lounge.png?v=13' }
   };
 
   const freshState = () => ({
