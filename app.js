@@ -263,7 +263,7 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
 
   const root = document.querySelector('#app');
   const toastNode = document.querySelector('#toast');
-  const SAVE_KEY = 'ocean-night-record-v14';
+  const SAVE_KEY = 'ocean-night-record-v18';
   const MAX_SLOTS = 7;
 
   const ITEMS = {
@@ -292,7 +292,7 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
   const freshState = () => ({
     screen: 'start', scene: 'exterior', inventory: [], selected: [], journal: [],
     flags: {}, log: '정문은 잠기지 않았다. 안쪽에서 희미한 전자음이 들린다.',
-    modal: null, startedAt: 0, elapsed: 0, mistakes: 0, hints: 0, sequenceStep: 0, sequenceChosen: [], pianoNotes: [], melodyNotes: [], soundOn: true,
+    modal: null, startedAt: 0, elapsed: 0, mistakes: 0, hints: 0, sequenceStep: 0, sequenceChosen: [], bookChosen: [], pianoNotes: [], melodyNotes: [], soundOn: true,
     catches: 0, chaseSeen: [], chaseSolution: null
   });
 
@@ -423,9 +423,9 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
     if (!state.flags.lockerOpened) return ['사라진 기록', '교실 책상 서랍에서 3번 사물함의 열쇠를 찾고 홈베이스로 가라.', '화면을 돌리지 말고 앞쪽 가운데 왼편 책상 서랍을 살펴보세요.'];
     if (!state.flags.noteCombined) return ['둘로 나뉜 기록', '종이 조각 두 장을 인벤토리에서 선택해 조합하라.', '아이템 두 개를 고른 뒤 ‘조합’을 누르세요.'];
     if (!state.flags.libraryOpen) return ['네 개의 밑줄', '복원된 기록의 강조어를 숫자로 바꿔 도서관 문을 열어라.', '영어 서수와 연도를 관찰하세요.'];
-    if (!state.flags.librarySolved) return ['어둠 속 어휘', '청색 필터로 도서관 서가의 숨은 글씨를 읽어라.', '필터를 선택한 상태로 서가를 조사하세요.'];
+    if (!state.flags.librarySolved) return ['뜻풀이 서가', '세 뜻풀이의 답을 추리하고, 양 끝 글자가 같은 책을 순서대로 골라라.', '문제를 풀면서 책 제목의 첫 글자와 끝 글자를 함께 관찰하세요.'];
     if (!state.flags.digitalSolved) return ['끊어진 문장', '출입 카드로 DS실에 들어가 세 문장을 복구하라.', '5과의 의사소통 표현, 현재완료와 to부정사를 떠올리세요.'];
-    if (!state.flags.dreamSolved) return ['방석 아래의 전류', '꿈나래터의 방석 배열을 관찰해 숨은 건전지를 찾아라.', '붉은 방석 뒤에는 회색 방석 두 개가 반복됩니다.'];
+    if (!state.flags.dreamSolved) return ['방석 아래의 전류', '꿈나래터의 세 흔적을 모아 건전지가 숨은 방석 번호를 추리하라.', '아래 계단, 오른쪽 수납장, 위쪽 난간을 각각 조사하세요.'];
     if (!state.flags.studySolved) return ['멈춘 카세트', '건전지로 카세트를 살리고 들려준 네 음을 그대로 재현하라.', '먼저 재생을 누르고 램프 건반 1·2·3을 순서대로 누르세요.'];
     if (!state.flags.pianoUnlocked) return ['마지막 연주', '오션 라운지 피아노의 네 문장을 풀어 건반 순서를 찾아라.', '각 문장의 정답이 몇 번째 선택지인지 차례로 연주하세요.'];
     if (!state.flags.finished) return ['마지막 증언', '피아노 안의 기록을 읽고 우정의 역사를 완성하라.', '여러 방에서 모은 기록을 다시 확인하세요.'];
@@ -463,7 +463,10 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
         ...(state.flags.digitalSolved ? [{ x: 88, y: 49, label: '꿈나래터로 간다', kind: 'exit', action: 'go', value: 'dream' }] : [])
       ],
       dream: [
-        { x: 34, y: 57, label: state.flags.dreamSolved ? '살펴본 방석' : '붉고 회색인 방석 배열', action: 'cushions' },
+        { x: 24, y: 72, label: state.flags.dreamSteps ? '확인한 계단 번호 흔적' : '아래 계단의 희미한 숫자', action: 'dreamClue', value: 'steps' },
+        { x: 82, y: 43, label: state.flags.dreamCubby ? '확인한 수납장 낙서' : '오른쪽 수납장 안의 낙서', action: 'dreamClue', value: 'cubby' },
+        { x: 69, y: 31, label: state.flags.dreamRail ? '확인한 난간 긁힘' : '위쪽 난간의 긁힌 문장', action: 'dreamClue', value: 'rail' },
+        { x: 45, y: 54, label: state.flags.dreamSolved ? '살펴본 방석' : '번호가 붙은 방석 지도', action: 'cushions' },
         { x: 7, y: 55, label: 'DS실로 돌아간다', kind: 'exit', action: 'go', value: 'digital' },
         ...(state.flags.dreamSolved ? [{ x: 89, y: 53, label: '스터디카페로 간다', kind: 'exit', action: 'go', value: 'study' }] : [])
       ],
@@ -500,9 +503,10 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
     if (type === 'pageA') body = `<div class="eyebrow">습득한 단서</div><h2>찢어진 종이 A</h2><div class="clue-paper">Ethiopia was the <strong>ONLY</strong> African country<br>to send soldiers during the Korean <span class="cut">War...</span><br><br><span class="cut">The me...</span> has THREE round <span class="cut">roofs...</span></div><p>오른쪽 절반이 있어야 내용을 읽을 수 있다.</p><div class="modal-actions"><button class="button primary" data-action="closeModal">접어 둔다</button></div>`;
     if (type === 'restoredNote') body = `<div class="eyebrow">조합 성공</div><h2>복원된 우정의 기록</h2><div class="clue-paper">Ethiopia was the <strong>ONLY</strong> African country to send soldiers.<br><br>The <strong>SECOND</strong> floor displays cultural items.<br><br>The house has <strong>THREE</strong> round roofs.<br><br>The memorial was built in <strong>2006</strong>.<br><br><em>“밑줄 친 네 부분을 한 자리씩 읽어라.”</em></div><p>서수는 숫자로, 연도는 마지막 한 자리로 바꾸면 네 자리 암호가 된다.</p><div class="modal-actions"><button class="button primary" data-action="closeModal">기록한다</button></div>`;
     if (type === 'libraryKeypad') body = `<div class="eyebrow">도서관 방화문</div><h2>4자리 기록 번호</h2><p>복원된 종이의 붉은 밑줄 네 개가 순서대로 열쇠가 된다.</p><label class="field-label" for="codeAnswer">암호 입력</label><input id="codeAnswer" class="code-input" inputmode="numeric" maxlength="4" autocomplete="off"><p class="error" data-error></p><div class="modal-actions"><button class="button" data-action="closeModal">취소</button><button class="button primary" data-action="submitCode">해제</button></div>`;
-    if (type === 'shelfPuzzle') body = `<div class="eyebrow">청색 필터로 드러난 글씨</div><h2>세 권의 책</h2><p>각 뜻풀이에 맞는 5과 단어를 영어로 입력하라. 세 단어가 모두 맞아야 서랍이 열린다.</p><label class="field-label">1. a person who travels to a place for pleasure</label><input class="code-input answer-input" data-vocab="0" autocomplete="off"><label class="field-label">2. a person who wears a uniform and protects a country</label><input class="code-input answer-input" data-vocab="1" autocomplete="off"><label class="field-label">3. to show great respect to someone</label><input class="code-input answer-input" data-vocab="2" autocomplete="off"><p class="error" data-error></p><div class="modal-actions"><button class="button" data-action="closeModal">나중에</button><button class="button primary" data-action="submitVocab">서가 조사</button></div>`;
+    if (type === 'shelfPuzzle') body = bookOrderMarkup();
     if (type === 'sequence') body = sequenceMarkup();
-    if (type === 'cushions') body = `<div class="eyebrow">꿈나래터 · 방석 관찰</div><h2>비어 있는 마지막 자리</h2><p>계단의 방석을 가까이 보니 같은 세 칸 규칙이 반복된다. 빈칸에 놓여야 할 색을 고르자.</p><div class="cushion-sequence"><i class="red"></i><i></i><i></i><i class="red"></i><i></i><i></i><i class="mystery">?</i></div><div class="board-options"><button class="token cushion-choice red" data-action="answerCushions" data-value="red">붉은 방석</button><button class="token cushion-choice gray" data-action="answerCushions" data-value="gray">회색 방석</button><button class="token cushion-choice blue" data-action="answerCushions" data-value="blue">파란 방석</button></div><p class="error" data-error></p><div class="modal-actions"><button class="button" data-action="closeModal">더 관찰하기</button></div>`;
+    if (type === 'dreamClue') body = dreamClueMarkup();
+    if (type === 'cushions') body = `<div class="eyebrow">꿈나래터 · 최종 추리</div><h2>건전지는 몇 번 방석 아래에 있을까?</h2><p>모은 세 흔적을 동시에 만족하는 방석은 하나뿐이다. 지도는 실제 계단을 정면에서 바라본 모습이다.</p><div class="seat-orientation"><span>← 창문</span><span>위쪽 계단</span><span>계단 →</span></div><div class="seat-map" aria-label="방석 번호 지도"><button class="gray" data-action="answerCushions" data-value="7"><b>7</b><small>회색</small></button><button class="red" data-action="answerCushions" data-value="8"><b>8</b><small>빨강</small></button><button class="gray" data-action="answerCushions" data-value="9"><b>9</b><small>회색</small></button><button class="red" data-action="answerCushions" data-value="4"><b>4</b><small>빨강</small></button><button class="gray" data-action="answerCushions" data-value="5"><b>5</b><small>회색</small></button><button class="gray" data-action="answerCushions" data-value="6"><b>6</b><small>회색</small></button><button class="gray" data-action="answerCushions" data-value="1"><b>1</b><small>회색</small></button><button class="gray" data-action="answerCushions" data-value="2"><b>2</b><small>회색</small></button><button class="red" data-action="answerCushions" data-value="3"><b>3</b><small>빨강</small></button></div><div class="collected-clues"><span>① 아래에서 위로 번호를 읽는다</span><span>② 숨은 곳은 회색, 바로 아래는 빨강</span><span>③ 창문보다 계단 쪽에 가깝다</span></div><p class="error" data-error></p><div class="modal-actions"><button class="button" data-action="closeModal">현장을 다시 본다</button></div>`;
     if (type === 'cassette') body = cassetteMarkup();
     if (type === 'pianoCode') body = pianoCodeMarkup();
     if (type === 'final') body = `<div class="eyebrow">피아노 내부의 마지막 기록</div><h2>새로운 우정의 증언</h2><p>앞에서 풀지 않았던 세 문장의 빈칸을 영어로 완성하라.</p><label class="field-label">1. Ethiopian soldiers used their own money to ____ Korean children.</label><input class="code-input answer-input" data-final="0" autocomplete="off"><label class="field-label">2. The Memorial Hall in Chuncheon has three round ____.</label><input class="code-input answer-input" data-final="1" autocomplete="off"><label class="field-label">3. Kate ____ to Ethiopia once. (두 단어)</label><input class="code-input answer-input" data-final="2" autocomplete="off"><p class="error" data-error></p><div class="modal-actions"><button class="button" data-action="closeModal">기록 다시 보기</button><button class="button primary" data-action="submitFinal">기록 완성</button></div>`;
@@ -529,9 +533,46 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
     return `<div class="eyebrow">화면 ${state.sequenceStep + 1} / ${sequences.length}</div><h2>끊어진 문장 신호</h2><p>${seq.prompt}. 아래 조각을 올바른 순서로 누르세요.</p><div class="token-board" aria-label="조립한 문장">${chosen.map((t, i) => `<button class="token" data-action="removeToken" data-value="${i}">${t}</button>`).join('') || '<span style="color:var(--muted)">여기에 문장을 조립하세요.</span>'}</div><div class="token-board" aria-label="문장 조각">${seq.tokens.map(t => `<button class="token ${chosen.includes(t) ? 'chosen' : ''}" data-action="addToken" data-value="${t}" ${chosen.includes(t) ? 'disabled' : ''}>${t}</button>`).join('')}</div><p class="error" data-error></p><div class="modal-actions"><button class="button" data-action="resetTokens">다시 배열</button><button class="button primary" data-action="submitSequence">신호 전송</button></div>`;
   }
 
+  const libraryBooks = [
+    ['tales', 'Tales of Ethiopia'],
+    ['border', 'Silent Border'],
+    ['memory', 'Hidden Memory'],
+    ['night', 'The Longest Night'],
+    ['stars', 'River of Stars'],
+    ['valor', 'Hall of Valor'],
+    ['map', "A Visitor's Map"],
+    ['time', 'Steps Through Time'],
+    ['friendship', 'Korea and Ethiopia']
+  ];
+
+  function bookOrderMarkup() {
+    const chosen = state.bookChosen || [];
+    const title = id => libraryBooks.find(book => book[0] === id)?.[1] || id;
+    const clues = [
+      'a person who travels to a place for pleasure',
+      'a person who wears a uniform and protects a country',
+      'to show great respect to someone'
+    ];
+    return `<div class="eyebrow">청색 필터로 드러난 책 자물쇠</div><h2>문제를 풀며 책을 골라라</h2><p>각 뜻풀이의 영어 답을 머릿속으로 찾은 뒤, 그 답과 <em>첫 글자·끝 글자가 같은 제목</em>을 아래 책장에서 순서대로 고르세요.</p><ol class="shelf-clues">${clues.map((clue, index) => `<li class="${chosen[index] ? 'filled' : ''}"><b>${index + 1}</b><span>${clue}</span><strong>${chosen[index] ? title(chosen[index]) : '이 문제에 맞는 책을 선택'}</strong></li>`).join('')}</ol><div class="book-shelf" aria-label="책 제목 목록">${libraryBooks.map(([id, bookTitle]) => `<button class="book-spine ${chosen.includes(id) ? 'chosen' : ''}" data-action="addBook" data-value="${id}" ${chosen.includes(id) ? 'disabled' : ''}>${bookTitle}</button>`).join('')}</div><p class="book-note">책에는 번호도 설명도 없다. 뜻풀이의 답과 제목 양 끝의 알파벳을 비교하자. 아래 선택 목록의 책을 누르면 취소할 수 있다.</p><div class="book-order" aria-label="선택한 책 순서">${chosen.length ? chosen.map((id, index) => `<button data-action="removeBook" data-value="${index}" aria-label="${index + 1}번 선택 취소"><b>${index + 1}</b>${title(id)}</button>`).join('') : '<span>첫 번째 문제에 맞는 책부터 누르세요.</span>'}</div><p class="error" data-error></p><div class="modal-actions"><button class="button" data-action="resetBooks">순서 지우기</button><button class="button" data-action="closeModal">잠시 닫기</button><button class="button primary" data-action="submitBooks">세 권을 당긴다</button></div>`;
+  }
+
   function cassetteMarkup() {
     const notes = state.melodyNotes || [];
     return `<div class="eyebrow">미디어월드 · 카세트 플레이어</div><h2>네 번의 안내음</h2><p>건전지를 넣자 세 개의 램프가 켜졌다. 재생 버튼으로 안내음을 듣고 같은 순서로 눌러라.</p><button class="cassette-play" data-action="playMelody">▶ 안내음 재생</button><div class="melody-display">${notes.length ? notes.map(n => `<span>${n}</span>`).join('') : '<em>소리를 먼저 들어 보세요</em>'}</div><div class="lamp-keys">${[1,2,3].map(n => `<button data-action="melodyNote" data-value="${n}"><b>${n}</b><small>${['낮은 음','가운데 음','높은 음'][n-1]}</small></button>`).join('')}</div><p class="error" data-error></p><div class="modal-actions"><button class="button" data-action="resetMelody">다시 입력</button><button class="button primary" data-action="submitMelody">패턴 확인</button></div>`;
+  }
+
+  function dreamClueMarkup() {
+    const clues = {
+      steps: ['계단 모서리의 숫자', '닳은 숫자 옆에 화살표가 있다.', '<strong>“바닥 가까운 줄의 왼쪽부터 1, 2, 3.<br>한 줄 올라가도 번호는 이어진다.”</strong>', '방석 번호를 읽는 방향을 알았다.'],
+      cubby: ['수납장 안쪽의 분필 낙서', '토끼 모양 귀 옆에 짧은 메모가 남아 있다.', '<strong>“나는 빨강이 아니다.<br>하지만 내 바로 아래에는 빨강이 있다.”</strong>', '숨은 방석의 색과 아래쪽 방석의 관계다.'],
+      rail: ['난간 아래의 긁힌 문장', '손전등을 비스듬히 비추자 마지막 조건이 드러난다.', '<strong>“창문보다 계단이 더 가깝다.”</strong>', '같은 조건의 후보 중 오른쪽을 골라야 한다.']
+    };
+    const [title, intro, clue, note] = clues[state.dreamClueType];
+    return `<div class="eyebrow">현장 단서 ${dreamClueCount()} / 3</div><h2>${title}</h2><p>${intro}</p><div class="etched-clue">${clue}</div><p>${note}</p><div class="modal-actions"><button class="button primary" data-action="closeModal">수첩에 기록한다</button></div>`;
+  }
+
+  function dreamClueCount() {
+    return ['dreamSteps','dreamCubby','dreamRail'].filter(key => state.flags[key]).length;
   }
 
   function chaseChoices() {
@@ -552,9 +593,12 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
     state.hints += 1;
     const [,, base] = objective();
     if (!state.flags.libraryOpen && state.flags.noteCombined) return 'ONLY=1, SECOND=2, THREE=3, 그리고 2006에서는 마지막 숫자만 읽습니다.';
-    if (!state.flags.librarySolved && state.flags.libraryOpen) return '청색 필터를 먼저 인벤토리에서 선택한 다음, 가운데 곡선 서가를 누르세요.';
+    if (!state.flags.librarySolved && state.flags.libraryOpen) return '각 뜻풀이의 답은 tourist, soldier, honor입니다. T…T, S…R, H…R과 같은 양 끝 글자를 가진 제목을 순서대로 찾으세요.';
     if (!state.flags.digitalSolved && state.flags.librarySolved) return '현재완료는 has had, 목적을 나타내는 to부정사는 to see입니다.';
-    if (!state.flags.dreamSolved && state.flags.digitalSolved) return '방석은 붉은색-회색-회색의 세 칸 규칙으로 반복됩니다.';
+    if (!state.flags.dreamSolved && state.flags.digitalSolved) {
+      if (dreamClueCount() < 3) return '방석만 보지 말고 아래 계단의 숫자, 오른쪽 수납장, 위쪽 난간을 각각 조사하세요.';
+      return '“회색이고 바로 아래가 빨강”인 후보를 먼저 두 개 찾은 뒤, 창문과 계단 중 어느 쪽에 가까운지 비교하세요.';
+    }
     if (!state.flags.studySolved && state.flags.dreamSolved) return '카세트 안내음은 3-1-2-3입니다. 소리를 켜고 재생 버튼을 눌러도 됩니다.';
     if (!state.flags.pianoUnlocked && state.flags.studySolved) return '네 문장의 정답 선택지 번호는 차례로 2, 2, 1, 2입니다.';
     return base;
@@ -624,13 +668,17 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
     if (action === 'libraryDoor') return libraryDoor();
     if (action === 'submitCode') return submitCode();
     if (action === 'shelf') return inspectShelf();
-    if (action === 'submitVocab') return submitVocab();
+    if (action === 'addBook') { if ((state.bookChosen || []).length < 3 && !state.bookChosen.includes(value)) state.bookChosen.push(value); return render(); }
+    if (action === 'removeBook') { state.bookChosen.splice(Number(value), 1); return render(); }
+    if (action === 'resetBooks') { state.bookChosen = []; return render(); }
+    if (action === 'submitBooks') return submitBooks();
     if (action === 'digitalDoor') return digitalDoor();
     if (action === 'monitor') return monitor();
     if (action === 'addToken') { if (!state.sequenceChosen.includes(value)) state.sequenceChosen.push(value); return render(); }
     if (action === 'removeToken') { state.sequenceChosen.splice(Number(value), 1); return render(); }
     if (action === 'resetTokens') { state.sequenceChosen = []; return render(); }
     if (action === 'submitSequence') return submitSequence();
+    if (action === 'dreamClue') return inspectDreamClue(value);
     if (action === 'cushions') return inspectCushions();
     if (action === 'answerCushions') return answerCushions(value);
     if (action === 'cassette') return inspectCassette();
@@ -700,13 +748,17 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
   function inspectShelf() {
     if (state.flags.librarySolved) { state.log = '숨은 서랍은 이미 열려 있다.'; return render(); }
     if (!state.selected.includes('blueFilter')) { state.log = has('blueFilter') ? '글씨가 너무 어둡다. 청색 필터를 선택해 서가에 대 보자.' : '푸른 흔적은 보이지만 글씨를 읽을 수 없다.'; return render(); }
+    state.bookChosen = state.bookChosen || [];
     openModal('shelfPuzzle');
   }
 
-  function submitVocab() {
-    const answers = [...root.querySelectorAll('[data-vocab]')].map(n => n.value.trim().toLowerCase());
-    if (answers.join('|') !== 'tourist|soldier|honor') return error('한 권이 움직이지 않는다. 뜻풀이와 철자를 모두 확인하자.');
-    removeItem('blueFilter'); addItem('accessCard'); state.flags.librarySolved = true; state.selected = []; state.modal = null; state.log = '세 권을 차례로 누르자 숨은 서랍에서 DS실 출입 카드가 나왔다.'; addJournal('어휘: tourist(관광객), soldier(군인), honor(기리다).'); notify('DS실 출입 카드를 얻었다.'); render();
+  function submitBooks() {
+    const chosen = (state.bookChosen || []).join('|');
+    if (chosen !== 'night|border|valor') return error('서가가 꿈쩍하지 않는다. 각 뜻풀이의 영어 답을 다시 생각하고, 그 단어의 첫·끝 글자를 책 제목의 양 끝과 비교하자.');
+    removeItem('blueFilter'); addItem('accessCard'); state.flags.librarySolved = true; state.selected = []; state.bookChosen = []; state.modal = null;
+    state.log = 'The Longest Night → Silent Border → Hall of Valor를 당기자 곡선 서가 아래의 숨은 서랍이 열렸다.';
+    addJournal('도서관 책 순서: tourist(T…T) → The Longest Night, soldier(S…R) → Silent Border, honor(H…R) → Hall of Valor.');
+    notify('DS실 출입 카드를 얻었다.'); render();
   }
 
   function digitalDoor() {
@@ -727,16 +779,36 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
     addItem('pianoKey'); state.flags.digitalSolved = true; state.selected = []; state.modal = null; state.log = '세 문장이 연결되며 화면 아래에서 작은 피아노 열쇠가 떨어졌다. DS실 카드는 계속 사용할 수 있다.'; addJournal('현재완료: Ethiopia has had strong ties with Korea for many years.'); addJournal('to부정사의 형용사적 용법: many cultural items to see.'); addJournal('여행 소감 묻기: How did you like the trip?'); notify('피아노 열쇠를 얻었다.'); render();
   }
 
+  function inspectDreamClue(type) {
+    const flag = { steps: 'dreamSteps', cubby: 'dreamCubby', rail: 'dreamRail' }[type];
+    if (!flag) return;
+    state.flags[flag] = true; state.dreamClueType = type; state.modal = 'dreamClue';
+    const notes = {
+      steps: '꿈나래터 번호 규칙: 바닥 가까운 줄의 왼쪽부터 1-2-3, 위로 갈수록 번호가 이어진다.',
+      cubby: '꿈나래터 낙서: 숨은 곳은 빨강이 아니며, 바로 아래 방석은 빨강이다.',
+      rail: '꿈나래터 난간: 숨은 곳은 창문보다 계단 쪽에 더 가깝다.'
+    };
+    addJournal(notes[type]); render();
+  }
+
   function inspectCushions() {
-    if (state.flags.dreamSolved) { state.log = '들춰 본 붉은 방석 아래에는 건전지가 있던 빈 홈만 남아 있다.'; return render(); }
+    if (state.flags.dreamSolved) { state.log = '들춰 본 6번 회색 방석 아래에는 건전지가 있던 빈 홈만 남아 있다.'; return render(); }
+    if (dreamClueCount() < 3) {
+      const missing = [];
+      if (!state.flags.dreamSteps) missing.push('아래 계단의 숫자');
+      if (!state.flags.dreamCubby) missing.push('오른쪽 수납장 낙서');
+      if (!state.flags.dreamRail) missing.push('위쪽 난간의 문장');
+      state.log = `번호만으로는 방석을 고를 수 없다. 아직 ${missing.join(', ')} 단서가 필요하다.`;
+      return render();
+    }
     openModal('cushions');
   }
 
   function answerCushions(answer) {
-    if (answer !== 'red') return error('방석이 맞지 않는다. 붉은색 다음에 회색 두 개가 반복되는지 다시 보자.');
+    if (answer !== '6') return error('빈 홈이 없다. “회색이며 바로 아래가 빨강”인 후보를 찾고, 그중 계단에 가까운 쪽을 고르자.');
     addItem('battery'); state.flags.dreamSolved = true; state.modal = null;
-    state.log = '마지막 자리에 붉은 방석을 옮기자, 아래 홈에서 낡은 건전지가 굴러 나왔다.';
-    addJournal('꿈나래터 방석 규칙: RED-GRAY-GRAY 반복. 빈칸은 RED.');
+    state.log = '6번 회색 방석을 들추자 아래 홈에서 낡은 건전지가 굴러 나왔다.';
+    addJournal('꿈나래터 최종 추리: 후보 6번과 7번 중 계단에 가까운 6번 방석 아래에 건전지가 있었다.');
     notify('낡은 건전지를 얻었다.'); render();
   }
 
