@@ -263,7 +263,7 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
 
   const root = document.querySelector('#app');
   const toastNode = document.querySelector('#toast');
-  const SAVE_KEY = 'ocean-night-record-v18';
+  const SAVE_KEY = 'ocean-night-record-v20';
   const MAX_SLOTS = 7;
 
   const ITEMS = {
@@ -292,7 +292,7 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
   const freshState = () => ({
     screen: 'start', scene: 'exterior', inventory: [], selected: [], journal: [],
     flags: {}, log: '정문은 잠기지 않았다. 안쪽에서 희미한 전자음이 들린다.',
-    modal: null, startedAt: 0, elapsed: 0, mistakes: 0, hints: 0, sequenceStep: 0, sequenceChosen: [], bookChosen: [], pianoNotes: [], melodyNotes: [], soundOn: true,
+    modal: null, startedAt: 0, elapsed: 0, mistakes: 0, hints: 0, sequenceStep: 0, sequenceChosen: [], bookChosen: [], libraryRoute: [], pianoNotes: [], melodyNotes: [], soundOn: true,
     catches: 0, chaseSeen: [], chaseSolution: null
   });
 
@@ -303,6 +303,8 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
   let ambientStarted = false;
   let ambientMaster = null;
   let chaseTimer = null;
+  let libraryLockTimer = null;
+  let libraryLockTicker = null;
 
   function safeLoad() {
     try {
@@ -423,7 +425,8 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
     if (!state.flags.lockerOpened) return ['사라진 기록', '교실 책상 서랍에서 3번 사물함의 열쇠를 찾고 홈베이스로 가라.', '화면을 돌리지 말고 앞쪽 가운데 왼편 책상 서랍을 살펴보세요.'];
     if (!state.flags.noteCombined) return ['둘로 나뉜 기록', '종이 조각 두 장을 인벤토리에서 선택해 조합하라.', '아이템 두 개를 고른 뒤 ‘조합’을 누르세요.'];
     if (!state.flags.libraryOpen) return ['네 개의 밑줄', '복원된 기록의 강조어를 숫자로 바꿔 도서관 문을 열어라.', '영어 서수와 연도를 관찰하세요.'];
-    if (!state.flags.librarySolved) return ['뜻풀이 서가', '세 뜻풀이의 답을 추리하고, 양 끝 글자가 같은 책을 순서대로 골라라.', '문제를 풀면서 책 제목의 첫 글자와 끝 글자를 함께 관찰하세요.'];
+    if (!state.flags.libraryBooksSolved) return ['뜻풀이 서가', '세 뜻풀이의 답을 추리하고, 양 끝 글자가 같은 책을 순서대로 골라라.', '문제를 풀면서 책 제목의 첫 글자와 끝 글자를 함께 관찰하세요.'];
+    if (!state.flags.librarySolved) return ['방향 자물쇠', '서가의 시작점에서 선택한 세 책을 차례로 지나 잠금장치까지 이동하라.', '격자에서 한 칸씩 움직인 방향을 입력하세요.'];
     if (!state.flags.digitalSolved) return ['끊어진 문장', '출입 카드로 DS실에 들어가 세 문장을 복구하라.', '5과의 의사소통 표현, 현재완료와 to부정사를 떠올리세요.'];
     if (!state.flags.dreamSolved) return ['방석 아래의 전류', '꿈나래터의 세 흔적을 모아 건전지가 숨은 방석 번호를 추리하라.', '아래 계단, 오른쪽 수납장, 위쪽 난간을 각각 조사하세요.'];
     if (!state.flags.studySolved) return ['멈춘 카세트', '건전지로 카세트를 살리고 들려준 네 음을 그대로 재현하라.', '먼저 재생을 누르고 램프 건반 1·2·3을 순서대로 누르세요.'];
@@ -454,7 +457,8 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
         ...(state.flags.librarySolved ? [{ x: 69, y: 48, label: 'DS실 출입문', kind: 'exit', action: 'digitalDoor' }] : [])
       ],
       library: [
-        { x: 50, y: 59, label: '곡선 서가의 숨은 표식', action: 'shelf' },
+        { x: 50, y: 59, label: state.flags.libraryBooksSolved ? '해결한 책 자물쇠' : '곡선 서가의 숨은 표식', action: 'shelf' },
+        ...(state.flags.libraryBooksSolved && !state.flags.librarySolved ? [{ x: 84, y: 42, label: '비상문의 방향 자물쇠', action: 'libraryChaseLock' }] : []),
         { x: 9, y: 66, label: '홈베이스로 돌아간다', kind: 'exit', action: 'go', value: 'homebase' }
       ],
       digital: [
@@ -504,6 +508,7 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
     if (type === 'restoredNote') body = `<div class="eyebrow">조합 성공</div><h2>복원된 우정의 기록</h2><div class="clue-paper">Ethiopia was the <strong>ONLY</strong> African country to send soldiers.<br><br>The <strong>SECOND</strong> floor displays cultural items.<br><br>The house has <strong>THREE</strong> round roofs.<br><br>The memorial was built in <strong>2006</strong>.<br><br><em>“밑줄 친 네 부분을 한 자리씩 읽어라.”</em></div><p>서수는 숫자로, 연도는 마지막 한 자리로 바꾸면 네 자리 암호가 된다.</p><div class="modal-actions"><button class="button primary" data-action="closeModal">기록한다</button></div>`;
     if (type === 'libraryKeypad') body = `<div class="eyebrow">도서관 방화문</div><h2>4자리 기록 번호</h2><p>복원된 종이의 붉은 밑줄 네 개가 순서대로 열쇠가 된다.</p><label class="field-label" for="codeAnswer">암호 입력</label><input id="codeAnswer" class="code-input" inputmode="numeric" maxlength="4" autocomplete="off"><p class="error" data-error></p><div class="modal-actions"><button class="button" data-action="closeModal">취소</button><button class="button primary" data-action="submitCode">해제</button></div>`;
     if (type === 'shelfPuzzle') body = bookOrderMarkup();
+    if (type === 'libraryChaseLock') body = libraryChaseLockMarkup();
     if (type === 'sequence') body = sequenceMarkup();
     if (type === 'dreamClue') body = dreamClueMarkup();
     if (type === 'cushions') body = `<div class="eyebrow">꿈나래터 · 최종 추리</div><h2>건전지는 몇 번 방석 아래에 있을까?</h2><p>모은 세 흔적을 동시에 만족하는 방석은 하나뿐이다. 지도는 실제 계단을 정면에서 바라본 모습이다.</p><div class="seat-orientation"><span>← 창문</span><span>위쪽 계단</span><span>계단 →</span></div><div class="seat-map" aria-label="방석 번호 지도"><button class="gray" data-action="answerCushions" data-value="7"><b>7</b><small>회색</small></button><button class="red" data-action="answerCushions" data-value="8"><b>8</b><small>빨강</small></button><button class="gray" data-action="answerCushions" data-value="9"><b>9</b><small>회색</small></button><button class="red" data-action="answerCushions" data-value="4"><b>4</b><small>빨강</small></button><button class="gray" data-action="answerCushions" data-value="5"><b>5</b><small>회색</small></button><button class="gray" data-action="answerCushions" data-value="6"><b>6</b><small>회색</small></button><button class="gray" data-action="answerCushions" data-value="1"><b>1</b><small>회색</small></button><button class="gray" data-action="answerCushions" data-value="2"><b>2</b><small>회색</small></button><button class="red" data-action="answerCushions" data-value="3"><b>3</b><small>빨강</small></button></div><div class="collected-clues"><span>① 아래에서 위로 번호를 읽는다</span><span>② 숨은 곳은 회색, 바로 아래는 빨강</span><span>③ 창문보다 계단 쪽에 가깝다</span></div><p class="error" data-error></p><div class="modal-actions"><button class="button" data-action="closeModal">현장을 다시 본다</button></div>`;
@@ -534,12 +539,12 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
   }
 
   const libraryBooks = [
-    ['tales', 'Tales of Ethiopia'],
     ['border', 'Silent Border'],
-    ['memory', 'Hidden Memory'],
+    ['valor', 'Hall of Valor'],
+    ['tales', 'Tales of Ethiopia'],
     ['night', 'The Longest Night'],
     ['stars', 'River of Stars'],
-    ['valor', 'Hall of Valor'],
+    ['memory', 'Hidden Memory'],
     ['map', "A Visitor's Map"],
     ['time', 'Steps Through Time'],
     ['friendship', 'Korea and Ethiopia']
@@ -554,6 +559,19 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
       'to show great respect to someone'
     ];
     return `<div class="eyebrow">청색 필터로 드러난 책 자물쇠</div><h2>문제를 풀며 책을 골라라</h2><p>각 뜻풀이의 영어 답을 머릿속으로 찾은 뒤, 그 답과 <em>첫 글자·끝 글자가 같은 제목</em>을 아래 책장에서 순서대로 고르세요.</p><ol class="shelf-clues">${clues.map((clue, index) => `<li class="${chosen[index] ? 'filled' : ''}"><b>${index + 1}</b><span>${clue}</span><strong>${chosen[index] ? title(chosen[index]) : '이 문제에 맞는 책을 선택'}</strong></li>`).join('')}</ol><div class="book-shelf" aria-label="책 제목 목록">${libraryBooks.map(([id, bookTitle]) => `<button class="book-spine ${chosen.includes(id) ? 'chosen' : ''}" data-action="addBook" data-value="${id}" ${chosen.includes(id) ? 'disabled' : ''}>${bookTitle}</button>`).join('')}</div><p class="book-note">책에는 번호도 설명도 없다. 뜻풀이의 답과 제목 양 끝의 알파벳을 비교하자. 아래 선택 목록의 책을 누르면 취소할 수 있다.</p><div class="book-order" aria-label="선택한 책 순서">${chosen.length ? chosen.map((id, index) => `<button data-action="removeBook" data-value="${index}" aria-label="${index + 1}번 선택 취소"><b>${index + 1}</b>${title(id)}</button>`).join('') : '<span>첫 번째 문제에 맞는 책부터 누르세요.</span>'}</div><p class="error" data-error></p><div class="modal-actions"><button class="button" data-action="resetBooks">순서 지우기</button><button class="button" data-action="closeModal">잠시 닫기</button><button class="button primary" data-action="submitBooks">세 권을 당긴다</button></div>`;
+  }
+
+  function libraryChaseLockMarkup() {
+    const route = state.libraryRoute || [];
+    const arrows = { U: '↑', R: '→', D: '↓', L: '←' };
+    const remaining = state.libraryLockDeadline ? Math.max(0, Math.ceil((state.libraryLockDeadline - Date.now()) / 1000)) : 15;
+    const cells = [
+      '<span class="maze-wall">▥</span>', '<span class="maze-wall">▥</span>', '<span class="maze-floor">·</span>', '<span class="maze-exit">EXIT</span>',
+      '<span class="maze-wall">▥</span>', '<span class="maze-wall">▥</span>', '<span class="maze-floor">·</span>', '<span class="maze-wall">▥</span>',
+      '<span class="maze-wall">▥</span>', '<span class="maze-floor">·</span>', '<span class="maze-floor">·</span>', '<span class="maze-wall">▥</span>',
+      '<span class="maze-start">START</span>', '<span class="maze-floor">·</span>', '<span class="maze-wall">▥</span>', '<span class="maze-wall">▥</span>'
+    ];
+    return `<div class="lock-countdown"><span style="animation-duration:${remaining}s"></span></div><div class="library-chase-lock"><section><div class="eyebrow danger">토끼 안전요원 접근 중 · <b data-lock-seconds>${remaining}</b>초</div><h2>서가 미로를 빠져나가라!</h2><p>책 문제가 풀리자 비상문이 잠기고 뒤에서 발소리가 들린다. <strong>START</strong>에서 <strong>EXIT</strong>까지 서가를 피해 한 칸씩 이동한 방향을 입력하세요.</p><div class="library-maze" aria-label="도서관 서가 미로">${cells.join('')}</div><div class="route-display" aria-label="입력한 방향">${route.length ? route.map(value => `<span>${arrows[value]}</span>`).join('') : '<em>빠르게 경로를 입력하세요.</em>'}</div><div class="direction-pad" aria-label="방향 자물쇠"><button data-action="routeStep" data-value="U" aria-label="위">↑</button><button data-action="routeStep" data-value="L" aria-label="왼쪽">←</button><button data-action="routeStep" data-value="D" aria-label="아래">↓</button><button data-action="routeStep" data-value="R" aria-label="오른쪽">→</button></div><p class="error" data-error></p><div class="modal-actions"><button class="button" data-action="resetRoute">입력 지우기</button><button class="button primary" data-action="submitRoute">비상문 열기</button></div></section><aside><img src="assets/rabbit-mascot.png?v=14" alt="복도에서 다가오는 귀여운 토끼 탈 안전요원"><strong>폭신… 폭신…</strong><small>시간이 끝나면 안전도가 감소합니다.</small></aside></div>`;
   }
 
   function cassetteMarkup() {
@@ -593,7 +611,8 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
     state.hints += 1;
     const [,, base] = objective();
     if (!state.flags.libraryOpen && state.flags.noteCombined) return 'ONLY=1, SECOND=2, THREE=3, 그리고 2006에서는 마지막 숫자만 읽습니다.';
-    if (!state.flags.librarySolved && state.flags.libraryOpen) return '각 뜻풀이의 답은 tourist, soldier, honor입니다. T…T, S…R, H…R과 같은 양 끝 글자를 가진 제목을 순서대로 찾으세요.';
+    if (!state.flags.libraryBooksSolved && state.flags.libraryOpen) return '각 뜻풀이의 답은 tourist, soldier, honor입니다. T…T, S…R, H…R과 같은 양 끝 글자를 가진 제목을 순서대로 찾으세요.';
+    if (!state.flags.librarySolved && state.flags.libraryBooksSolved) return 'START에서 EXIT까지 빈 통로만 따라가세요. 정답은 → ↑ → ↑ ↑ → 입니다.';
     if (!state.flags.digitalSolved && state.flags.librarySolved) return '현재완료는 has had, 목적을 나타내는 to부정사는 to see입니다.';
     if (!state.flags.dreamSolved && state.flags.digitalSolved) {
       if (dreamClueCount() < 3) return '방석만 보지 말고 아래 계단의 숫자, 오른쪽 수납장, 위쪽 난간을 각각 조사하세요.';
@@ -653,7 +672,7 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
   function act(action, value) {
     if (action !== 'toggleSound') wakeAudio();
     if (action === 'start') { state = freshState(); state.screen = 'game'; state.startedAt = Date.now(); render(); startTimer(); return; }
-    if (action === 'restart') { localStorage.removeItem(SAVE_KEY); state = freshState(); render(); return; }
+    if (action === 'restart') { clearLibraryLockTimers(); localStorage.removeItem(SAVE_KEY); state = freshState(); render(); return; }
     if (action === 'toggleSound') return toggleSound();
     if (action === 'go') return go(value);
     if (action === 'closeModal') return closeModal();
@@ -672,6 +691,10 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
     if (action === 'removeBook') { state.bookChosen.splice(Number(value), 1); return render(); }
     if (action === 'resetBooks') { state.bookChosen = []; return render(); }
     if (action === 'submitBooks') return submitBooks();
+    if (action === 'libraryChaseLock') return startLibraryChase();
+    if (action === 'routeStep') return addLibraryRoute(value);
+    if (action === 'resetRoute') return resetLibraryRoute();
+    if (action === 'submitRoute') return submitLibraryRoute();
     if (action === 'digitalDoor') return digitalDoor();
     if (action === 'monitor') return monitor();
     if (action === 'addToken') { if (!state.sequenceChosen.includes(value)) state.sequenceChosen.push(value); return render(); }
@@ -747,6 +770,7 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
 
   function inspectShelf() {
     if (state.flags.librarySolved) { state.log = '숨은 서랍은 이미 열려 있다.'; return render(); }
+    if (state.flags.libraryBooksSolved) { state.log = '책 세 권은 이미 맞췄다. 오른쪽 비상문의 방향 자물쇠를 풀어야 한다.'; return render(); }
     if (!state.selected.includes('blueFilter')) { state.log = has('blueFilter') ? '글씨가 너무 어둡다. 청색 필터를 선택해 서가에 대 보자.' : '푸른 흔적은 보이지만 글씨를 읽을 수 없다.'; return render(); }
     state.bookChosen = state.bookChosen || [];
     openModal('shelfPuzzle');
@@ -755,10 +779,52 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
   function submitBooks() {
     const chosen = (state.bookChosen || []).join('|');
     if (chosen !== 'night|border|valor') return error('서가가 꿈쩍하지 않는다. 각 뜻풀이의 영어 답을 다시 생각하고, 그 단어의 첫·끝 글자를 책 제목의 양 끝과 비교하자.');
-    removeItem('blueFilter'); addItem('accessCard'); state.flags.librarySolved = true; state.selected = []; state.bookChosen = []; state.modal = null;
-    state.log = 'The Longest Night → Silent Border → Hall of Valor를 당기자 곡선 서가 아래의 숨은 서랍이 열렸다.';
+    state.flags.libraryBooksSolved = true;
     addJournal('도서관 책 순서: tourist(T…T) → The Longest Night, soldier(S…R) → Silent Border, honor(H…R) → Hall of Valor.');
-    notify('DS실 출입 카드를 얻었다.'); render();
+    notify('발소리가 가까워진다!'); startLibraryChase();
+  }
+
+  function clearLibraryLockTimers() {
+    clearTimeout(libraryLockTimer); clearInterval(libraryLockTicker);
+    libraryLockTimer = null; libraryLockTicker = null;
+  }
+
+  function startLibraryChase() {
+    clearLibraryLockTimers();
+    state.libraryRoute = []; state.libraryLockDeadline = Date.now() + 15000; state.modal = 'libraryChaseLock'; render();
+    libraryLockTicker = setInterval(() => {
+      const seconds = root.querySelector('[data-lock-seconds]');
+      if (seconds) seconds.textContent = Math.max(0, Math.ceil((state.libraryLockDeadline - Date.now()) / 1000));
+    }, 200);
+    libraryLockTimer = setTimeout(() => {
+      clearLibraryLockTimers(); state.libraryLockDeadline = 0;
+      caughtByRabbit('방향 자물쇠를 푸는 사이 토끼 안전요원이 뒤에서 어깨를 톡 쳤다.');
+    }, 15000);
+  }
+
+  function routeDisplayMarkup() {
+    const arrows = { U: '↑', R: '→', D: '↓', L: '←' };
+    return state.libraryRoute.length ? state.libraryRoute.map(value => `<span>${arrows[value]}</span>`).join('') : '<em>빠르게 경로를 입력하세요.</em>';
+  }
+
+  function addLibraryRoute(value) {
+    state.libraryRoute = state.libraryRoute || [];
+    if (state.libraryRoute.length < 8) state.libraryRoute.push(value);
+    const display = root.querySelector('.route-display'); if (display) display.innerHTML = routeDisplayMarkup(); save();
+  }
+
+  function resetLibraryRoute() {
+    state.libraryRoute = [];
+    const display = root.querySelector('.route-display'); if (display) display.innerHTML = routeDisplayMarkup(); save();
+  }
+
+  function submitLibraryRoute() {
+    if ((state.libraryRoute || []).join('') !== 'RURUUR') return error('붉은 불이 켜진다. START에서 EXIT까지 검은 서가를 피해 빈 통로를 한 칸씩 다시 따라가자.');
+    clearLibraryLockTimers(); state.libraryLockDeadline = 0;
+    removeItem('blueFilter'); addItem('accessCard'); state.flags.librarySolved = true; state.selected = []; state.bookChosen = []; state.libraryRoute = []; state.modal = null;
+    state.log = '마지막 방향을 누르자 비상문이 열렸다. 토끼 안전요원의 손이 닿기 직전 복도로 빠져나왔다.';
+    addJournal('도서관 타임어택: 서가 미로의 탈출 경로는 → ↑ → ↑ ↑ →.');
+    notify('추격 탈출 성공 · DS실 카드를 얻었다.'); render();
   }
 
   function digitalDoor() {
