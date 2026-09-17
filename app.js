@@ -263,7 +263,7 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
 
   const root = document.querySelector('#app');
   const toastNode = document.querySelector('#toast');
-  const SAVE_KEY = 'ocean-night-record-v22';
+  const SAVE_KEY = 'ocean-night-record-v26';
   const MAX_SLOTS = 7;
 
   const ITEMS = {
@@ -286,13 +286,14 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
     digital: { name: 'DS실', image: 'assets/horror-digital.png?v=6' },
     dream: { name: '꿈나래터 · 계단 광장', image: 'assets/horror-dream-v2.png?v=14' },
     study: { name: '미디어월드 · 스터디카페', image: 'assets/horror-study-v2.png?v=14' },
+    workspace: { name: '2층 워크스페이스', image: 'assets/horror-workspace-v26.png' },
     lounge: { name: '오션 라운지', image: 'assets/horror-lounge.png?v=6' }
   };
 
   const freshState = () => ({
     screen: 'start', scene: 'exterior', inventory: [], selected: [], journal: [],
     flags: {}, log: '정문은 잠기지 않았다. 안쪽에서 희미한 전자음이 들린다.',
-    modal: null, startedAt: 0, elapsed: 0, mistakes: 0, hints: 0, sequenceStep: 0, sequenceChosen: [], bookChosen: [], libraryRoute: [], lockerPins: [], pianoNotes: [], melodyNotes: [], soundOn: true,
+    modal: null, startedAt: 0, elapsed: 0, mistakes: 0, hints: 0, sequenceStep: 0, sequenceChosen: [], bookChosen: [], libraryRoute: [], lockerPins: [], workspacePins: [], pianoNotes: [], melodyNotes: [], soundOn: true,
     catches: 0, chaseSeen: [], chaseSolution: null
   });
 
@@ -459,6 +460,7 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
     if (!state.flags.digitalSolved) return ['끊어진 문장', '출입 카드로 DS실에 들어가 세 문장을 복구하라.', '5과의 의사소통 표현, 현재완료와 to부정사를 떠올리세요.'];
     if (!state.flags.dreamSolved) return ['방석 아래의 전류', '꿈나래터의 세 흔적을 모아 건전지가 숨은 방석 번호를 추리하라.', '아래 계단, 오른쪽 수납장, 위쪽 난간을 각각 조사하세요.'];
     if (!state.flags.studySolved) return ['멈춘 카세트', '건전지로 카세트를 살리고 들려준 네 음을 그대로 재현하라.', '먼저 재생을 누르고 램프 건반 1·2·3을 순서대로 누르세요.'];
+    if (!state.flags.workspaceSolved) return ['남겨진 자리', '워크스페이스 벤치 수납함의 15버튼 잠금을 해제하라.', '방 안에서 자물쇠와 닮은 배열을 찾아보세요.'];
     if (!state.flags.pianoUnlocked) return ['마지막 연주', '오션 라운지 피아노의 네 문장을 풀어 건반 순서를 찾아라.', '각 문장의 정답이 몇 번째 선택지인지 차례로 연주하세요.'];
     if (!state.flags.finished) return ['마지막 증언', '피아노 안의 기록을 읽고 우정의 역사를 완성하라.', '여러 방에서 모은 기록을 다시 확인하세요.'];
     return ['탈출 성공', '오션중학교의 21시 기록을 복원했다.', '모든 단서가 하나의 역사로 이어졌다.'];
@@ -507,11 +509,16 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
       study: [
         { x: 66, y: 50, label: '멈춘 카세트 플레이어', action: 'cassette' },
         { x: 7, y: 54, label: '꿈나래터로 돌아간다', kind: 'exit', action: 'go', value: 'dream' },
-        ...(state.flags.studySolved ? [{ x: 91, y: 54, label: '오션 라운지로 간다', kind: 'exit', action: 'go', value: 'lounge' }] : [])
+        ...(state.flags.studySolved ? [{ x: 91, y: 54, label: '워크스페이스로 간다', kind: 'exit', action: 'go', value: 'workspace' }] : [])
+      ],
+      workspace: [
+        { x: 60, y: 61, label: state.flags.workspaceSolved ? '열린 벤치 수납함' : '벤치 아래 낯선 금속판', action: 'workspaceLock' },
+        { x: 7, y: 58, label: '스터디카페로 돌아간다', kind: 'exit', action: 'go', value: 'study' },
+        ...(state.flags.workspaceSolved ? [{ x: 92, y: 53, label: '오션 라운지로 간다', kind: 'exit', action: 'go', value: 'lounge' }] : [])
       ],
       lounge: [
         { x: 83, y: 54, label: '잠긴 피아노', action: 'piano' },
-        { x: 7, y: 53, label: '스터디카페로 돌아간다', kind: 'exit', action: 'go', value: 'study' }
+        { x: 7, y: 53, label: '워크스페이스로 돌아간다', kind: 'exit', action: 'go', value: 'workspace' }
       ]
     };
     return spots[state.scene] || [];
@@ -536,6 +543,8 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
     if (type === 'board') body = `<div class="eyebrow">교실 전자칠판 · 비상 전원</div><h2>멈춘 문장을 완성하라</h2><p>화면은 꺼져 있지만 아래쪽 비상 표시창에 한 문장만 희미하게 남아 있다.</p><div class="dark-screen-note"><strong>Have you ever ___ Chuncheon?</strong><small>알맞은 말을 선택하면 마지막 위치 정보가 나타난다.</small></div><div class="board-options"><button class="token" data-action="answerBoard" data-value="visit">visit</button><button class="token" data-action="answerBoard" data-value="visited">visited</button><button class="token" data-action="answerBoard" data-value="visiting">visiting</button></div><p class="error" data-error></p><div class="modal-actions"><button class="button" data-action="closeModal">나중에</button></div>`;
     if (type === 'deskPattern') body = deskPatternMarkup();
     if (type === 'lockerPins') body = lockerPinsMarkup();
+    if (type === 'workspaceShelf') body = workspaceShelfMarkup();
+    if (type === 'workspaceLock') body = workspaceLockMarkup();
     if (type === 'pageA') body = `<div class="eyebrow">습득한 단서</div><h2>찢어진 종이 A</h2><div class="clue-paper">Ethiopia was the <strong>ONLY</strong> African country<br>to send soldiers during the Korean <span class="cut">War...</span><br><br><span class="cut">The me...</span> has THREE round <span class="cut">roofs...</span></div><p>오른쪽 절반이 있어야 내용을 읽을 수 있다.</p><div class="modal-actions"><button class="button primary" data-action="closeModal">접어 둔다</button></div>`;
     if (type === 'restoredNote') body = `<div class="eyebrow">조합 성공</div><h2>복원된 우정의 기록</h2><div class="clue-paper">Ethiopia was the <strong>ONLY</strong> African country to send soldiers.<br><br>The <strong>SECOND</strong> floor displays cultural items.<br><br>The house has <strong>THREE</strong> round roofs.<br><br>The memorial was built in <strong>2006</strong>.<br><br><em>“밑줄 친 네 부분을 한 자리씩 읽어라.”</em></div><p>서수는 숫자로, 연도는 마지막 한 자리로 바꾸면 네 자리 암호가 된다.</p><div class="modal-actions"><button class="button primary" data-action="closeModal">기록한다</button></div>`;
     if (type === 'libraryKeypad') body = `<div class="eyebrow">도서관 방화문</div><h2>4자리 기록 번호</h2><p>복원된 종이의 붉은 밑줄 네 개가 순서대로 열쇠가 된다.</p><label class="field-label" for="codeAnswer">암호 입력</label><input id="codeAnswer" class="code-input" inputmode="numeric" maxlength="4" autocomplete="off"><p class="error" data-error></p><div class="modal-actions"><button class="button" data-action="closeModal">취소</button><button class="button primary" data-action="submitCode">해제</button></div>`;
@@ -603,7 +612,7 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
       '<span class="maze-wall">▥</span>', '<span class="maze-floor">·</span>', '<span class="maze-floor">·</span>', '<span class="maze-wall">▥</span>',
       '<span class="maze-start">START</span>', '<span class="maze-floor">·</span>', '<span class="maze-wall">▥</span>', '<span class="maze-wall">▥</span>'
     ];
-    return `<div class="lock-countdown"><span style="animation-duration:${remaining}s"></span></div><div class="library-chase-lock"><section><div class="eyebrow danger">토끼 안전요원 접근 중 · <b data-lock-seconds>${remaining}</b>초</div><h2>서가 미로를 빠져나가라!</h2><p>책 문제가 풀리자 비상문이 잠기고 뒤에서 발소리가 들린다. <strong>START</strong>에서 <strong>EXIT</strong>까지 서가를 피해 한 칸씩 이동한 방향을 입력하세요.</p><div class="library-maze" aria-label="도서관 서가 미로">${cells.join('')}</div><div class="route-display" aria-label="입력한 방향">${route.length ? route.map(value => `<span>${arrows[value]}</span>`).join('') : '<em>빠르게 경로를 입력하세요.</em>'}</div><div class="direction-pad" aria-label="방향 자물쇠"><button data-action="routeStep" data-value="U" aria-label="위">↑</button><button data-action="routeStep" data-value="L" aria-label="왼쪽">←</button><button data-action="routeStep" data-value="D" aria-label="아래">↓</button><button data-action="routeStep" data-value="R" aria-label="오른쪽">→</button></div><p class="error" data-error></p><div class="modal-actions"><button class="button" data-action="resetRoute">입력 지우기</button><button class="button primary" data-action="submitRoute">비상문 열기</button></div></section><aside><img src="assets/rabbit-mascot.png?v=14" alt="복도에서 다가오는 귀여운 토끼 탈 안전요원"><strong>폭신… 폭신…</strong><small>시간이 끝나면 안전도가 감소합니다.</small></aside></div>`;
+    return `<div class="lock-countdown"><span style="animation-duration:${remaining}s"></span></div><div class="library-chase-lock"><section><div class="eyebrow danger">토끼 안전요원 접근 중 · <b data-lock-seconds>${remaining}</b>초</div><h2>서가 미로를 빠져나가라!</h2><p>책 문제가 풀리자 비상문이 잠기고 뒤에서 발소리가 들린다. <strong>START</strong>에서 <strong>EXIT</strong>까지 서가를 피해 한 칸씩 이동한 방향을 입력하세요.</p><div class="library-maze" aria-label="도서관 서가 미로">${cells.join('')}</div><div class="route-display" aria-label="입력한 방향">${route.length ? route.map(value => `<span>${arrows[value]}</span>`).join('') : '<em>빠르게 경로를 입력하세요.</em>'}</div><div class="direction-pad" aria-label="방향 자물쇠"><button data-action="routeStep" data-value="U" aria-label="위">↑</button><button data-action="routeStep" data-value="L" aria-label="왼쪽">←</button><button data-action="routeStep" data-value="D" aria-label="아래">↓</button><button data-action="routeStep" data-value="R" aria-label="오른쪽">→</button></div><p class="keyboard-hint">방향키로 입력하고 <strong>Enter</strong>를 누르면 제출됩니다.</p><p class="error" data-error></p><div class="modal-actions chase-submit"><button class="button" data-action="resetRoute">입력 지우기</button><button class="button primary" data-action="submitRoute">비상문 열기</button></div></section><aside><img src="assets/rabbit-mascot.png?v=14" alt="복도에서 다가오는 귀여운 토끼 탈 안전요원"><strong>폭신… 폭신…</strong><small>시간이 끝나면 안전도가 감소합니다.</small></aside></div>`;
   }
 
   function cassetteMarkup() {
@@ -653,7 +662,8 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
       return '“회색이고 바로 아래가 빨강”인 후보를 먼저 두 개 찾은 뒤, 창문과 계단 중 어느 쪽에 가까운지 비교하세요.';
     }
     if (!state.flags.studySolved && state.flags.dreamSolved) return '카세트 안내음은 3-1-2-3입니다. 소리를 켜고 재생 버튼을 눌러도 됩니다.';
-    if (!state.flags.pianoUnlocked && state.flags.studySolved) return '네 문장의 정답 선택지 번호는 차례로 2, 2, 1, 2입니다.';
+    if (!state.flags.workspaceSolved && state.flags.studySolved) return state.flags.workspaceShelfSeen ? '금속판의 문구처럼 빈자리는 누르지 말고, 남겨진 물건의 자리만 표시하세요.' : '자물쇠와 똑같이 가로 세 칸씩 나뉜 구조물이 방 안에 있는지 살펴보세요.';
+    if (!state.flags.pianoUnlocked && state.flags.workspaceSolved) return '네 문장의 정답 선택지 번호는 차례로 2, 2, 1, 2입니다.';
     return base;
   }
 
@@ -679,6 +689,22 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
     root.querySelectorAll('[data-action]').forEach(el => el.addEventListener('click', () => act(el.dataset.action, el.dataset.value)));
   }
 
+  function handleDirectionKey(event) {
+    if (state.modal !== 'libraryChaseLock' || event.repeat) return;
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      wakeAudio();
+      submitLibraryRoute();
+      return;
+    }
+    const directions = { ArrowUp: 'U', ArrowRight: 'R', ArrowDown: 'D', ArrowLeft: 'L' };
+    const direction = directions[event.key];
+    if (!direction) return;
+    event.preventDefault();
+    wakeAudio();
+    addLibraryRoute(direction);
+  }
+
   function go(scene) {
     if (transitioning) return;
     transitioning = true;
@@ -692,6 +718,7 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
         digital: 'DS실의 빈 모니터 사이에서 대형 화면 하나만 불규칙하게 깜박인다.',
         dream: '넓은 나무 계단에 붉고 회색인 방석들이 일정한 간격으로 놓여 있다.',
         study: '따뜻한 탁상등 사이에서 낡은 카세트 플레이어가 희미하게 켜져 있다.',
+        workspace: '달빛이 든 워크스페이스. 벽면 가구와 긴 벤치가 고요한 방 안에 서로 마주 보고 있다.',
         lounge: '달빛 아래 피아노 한 대만 따뜻한 빛을 받고 있다.'
       };
       state.log = messages[scene] || '다시 익숙한 장소로 돌아왔다.'; render();
@@ -747,6 +774,11 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
     if (action === 'melodyNote') { playPianoNote(Number(value) + 1); if ((state.melodyNotes || []).length < 4) state.melodyNotes.push(Number(value)); return render(); }
     if (action === 'resetMelody') { state.melodyNotes = []; return render(); }
     if (action === 'submitMelody') return submitMelody();
+    if (action === 'workspaceShelf') return inspectWorkspaceShelf();
+    if (action === 'workspaceLock') return inspectWorkspaceLock();
+    if (action === 'workspacePin') return toggleWorkspacePin(Number(value));
+    if (action === 'resetWorkspacePins') { state.workspacePins = []; return render(); }
+    if (action === 'submitWorkspaceLock') return submitWorkspaceLock();
     if (action === 'chaseChoice') return resolveChase(value);
     if (action === 'checkpoint') return checkpoint();
     if (action === 'piano') return piano();
@@ -975,8 +1007,57 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
   function submitMelody() {
     if ((state.melodyNotes || []).join('') !== '3123') return error('카세트가 되감긴다. 높고 낮은 음의 순서를 다시 들어 보자.');
     state.flags.studySolved = true; state.melodyNotes = []; state.modal = null;
-    state.log = '3-1-2-3 패턴을 재현하자 카세트에서 “라운지 피아노”라는 안내가 흘러나왔다.';
+    state.log = '3-1-2-3 패턴을 재현하자 카세트에서 “워크스페이스”라는 안내가 흘러나왔다.';
     addJournal('카세트 안내음: 높은 음(3) - 낮은 음(1) - 가운데 음(2) - 높은 음(3).');
+    notify('워크스페이스 통로가 열렸다.'); render();
+  }
+
+  const WORKSPACE_OBJECTS = {
+    0: ['🌿', '늘어진 화분'],
+    2: ['📚', '세워 둔 책'],
+    4: ['🌐', '작은 지구본'],
+    6: ['🗃️', '작은 보관함'],
+    8: ['🪴', '하얀 화분'],
+    10: ['📖', '눕혀 둔 책'],
+    14: ['◇', '철제 장식']
+  };
+  const WORKSPACE_PATTERN = Object.keys(WORKSPACE_OBJECTS).map(Number);
+
+  function workspaceShelfMarkup() {
+    return `<div class="eyebrow">워크스페이스 · 정면 벽</div><h2>누군가 두고 간 물건들</h2><p>정면의 오래된 책장은 대부분 비어 있다. 몇몇 칸에만 작은 물건들이 놓인 채 먼지가 끊겨 있다.</p><div class="workspace-shelf" aria-label="가로 3칸 세로 5칸 책장">${Array.from({ length: 15 }, (_, index) => { const object = WORKSPACE_OBJECTS[index]; return `<span class="shelf-cell ${object ? 'occupied' : ''}"><span class="sr-only">${Math.floor(index / 3) + 1}번째 줄 왼쪽에서 ${(index % 3) + 1}번째 칸, ${object ? object[1] : '빈 칸'}</span>${object ? `<b aria-hidden="true">${object[0]}</b><small>${object[1]}</small>` : '<i aria-hidden="true"></i>'}</span>`; }).join('')}</div><p class="pattern-note">물건들은 우연히 놓인 것처럼 보이지 않는다.</p><div class="modal-actions"><button class="button primary" data-action="closeModal">살펴보고 돌아선다</button></div>`;
+  }
+
+  function workspaceLockMarkup() {
+    const pins = state.workspacePins || [];
+    return `<div class="eyebrow">워크스페이스 · 벤치 수납함</div><h2>열다섯 개의 낡은 버튼</h2><div class="lock-inscription">“빈자리는 침묵하고,<br>남겨진 자리만 문을 연다.”</div><div class="workspace-lock" aria-label="가로 3칸 세로 5칸 버튼 자물쇠">${Array.from({ length: 15 }, (_, index) => `<button class="workspace-pin ${pins.includes(index) ? 'active' : ''}" data-action="workspacePin" data-value="${index}" aria-pressed="${pins.includes(index)}" aria-label="${Math.floor(index / 3) + 1}번째 줄 왼쪽에서 ${(index % 3) + 1}번째 버튼"><span></span></button>`).join('')}</div><div class="pin-status">눌린 버튼 <strong>${pins.length}</strong> / ${WORKSPACE_PATTERN.length}</div><p class="error" data-error></p><div class="modal-actions"><button class="button" data-action="closeModal">방 안을 다시 살핀다</button><button class="button" data-action="resetWorkspacePins">모두 해제</button><button class="button primary" data-action="submitWorkspaceLock">잠금 해제</button></div>`;
+  }
+
+  function inspectWorkspaceShelf() {
+    if (!state.flags.workspaceShelfSeen) {
+      state.flags.workspaceShelfSeen = true;
+      addJournal('워크스페이스 정면 벽: 3×5 책장의 일부 칸에만 물건이 놓여 있다.');
+    }
+    openModal('workspaceShelf');
+  }
+
+  function inspectWorkspaceLock() {
+    if (state.flags.workspaceSolved) { state.log = '벤치 수납함은 열려 있다. 안쪽 통로 표시등이 오션 라운지를 가리킨다.'; return render(); }
+    state.workspacePins = state.workspacePins || [];
+    openModal('workspaceLock');
+  }
+
+  function toggleWorkspacePin(index) {
+    const pins = state.workspacePins || [];
+    state.workspacePins = pins.includes(index) ? pins.filter(pin => pin !== index) : [...pins, index];
+    render();
+  }
+
+  function submitWorkspaceLock() {
+    const answer = [...(state.workspacePins || [])].sort((a, b) => a - b).join(',');
+    if (answer !== WORKSPACE_PATTERN.join(',')) return error('잠금 표시등이 붉게 깜박인다. “빈자리”와 “남겨진 자리”의 뜻을 방 안에서 다시 찾아보자.');
+    state.flags.workspaceSolved = true; state.workspacePins = []; state.modal = null;
+    state.log = '일곱 버튼이 동시에 들어가며 벤치 수납함이 열렸다. 안쪽에는 오션 라운지로 이어지는 통로 스위치가 있다.';
+    addJournal('워크스페이스 15버튼 자물쇠: 책장의 물건이 있던 일곱 칸과 같은 위치를 눌러 해제했다.');
     notify('오션 라운지 통로가 열렸다.'); render();
   }
 
@@ -1035,5 +1116,6 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
     register({ name: 'move_to_school_scene', description: 'Move to an available named scene in the visible escape game.', inputSchema: { type: 'object', properties: { scene: { type: 'string', enum: Object.keys(SCENES) } }, required: ['scene'], additionalProperties: false }, execute: ({ scene }) => { const target = hotspots().find(h => h.action === 'go' && h.value === scene); if (!target) throw new Error('That scene is not currently reachable.'); go(scene); return { content: [{ type: 'text', text: `Moved to ${SCENES[scene].name}.` }] }; } });
   }
 
+  document.addEventListener('keydown', handleDirectionKey);
   safeLoad(); render(); if (state.screen === 'game') startTimer(); registerWebMCP();
 })();
