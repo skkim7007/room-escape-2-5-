@@ -263,7 +263,7 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
 
   const root = document.querySelector('#app');
   const toastNode = document.querySelector('#toast');
-  const SAVE_KEY = 'ocean-night-record-v28';
+  const SAVE_KEY = 'ocean-night-record-v31';
   const MAX_SLOTS = 7;
 
   const ITEMS = {
@@ -271,7 +271,7 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
     lockerKey: { name: '3번 열쇠', glyph: '⚿', description: '손때 묻은 작은 사물함 열쇠. 3이라는 숫자가 새겨져 있다.' },
     pageB: { name: '찢어진 종이 B', glyph: '◪', description: '오른쪽 조각. 다른 조각과 이어 붙일 수 있을 것 같다.' },
     blueFilter: { name: '청색 필터', glyph: '▣', description: '어두운 곳의 숨은 글씨를 읽게 해 주는 투명 필터.' },
-    restoredNote: { name: '복원된 기록', glyph: '▤', description: 'ONLY · SECOND · THREE · 2006에 붉은 밑줄이 있다.' },
+    restoredNote: { name: '복원된 기록', glyph: '▤', description: '한국과 에티오피아의 인연을 설명한 네 문장이 적혀 있다.' },
     accessCard: { name: 'DS실 카드', glyph: '▥', description: 'DS실 출입 카드.' },
     pianoKey: { name: '피아노 열쇠', glyph: '♩', description: '오션 라운지의 오래된 피아노 덮개 열쇠.' },
     battery: { name: '낡은 건전지', glyph: '▰', description: '꿈나래터 방석 아래에서 찾았다. 스터디카페의 카세트에 맞을 것 같다.' }
@@ -454,7 +454,7 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
     if (!state.flags.pageA) return ['첫 번째 흔적', '교실 바닥에 떨어진 것을 찾아라.', '반짝이는 지점을 눌러 자세히 조사하세요.'];
     if (!state.flags.lockerOpened) return ['여덟 개의 자리', '교실의 책상 배열을 관찰하고 3번 사물함의 8핀 자물쇠를 열어라.', '열쇠만으로는 부족합니다. 의자가 빠져 나온 네 자리도 기억하세요.'];
     if (!state.flags.noteCombined) return ['둘로 나뉜 기록', '종이 조각 두 장을 인벤토리에서 선택해 조합하라.', '아이템 두 개를 고른 뒤 ‘조합’을 누르세요.'];
-    if (!state.flags.libraryOpen) return ['네 개의 밑줄', '복원된 기록의 강조어를 숫자로 바꿔 도서관 문을 열어라.', '영어 서수와 연도를 관찰하세요.'];
+    if (!state.flags.libraryOpen) return ['문장 속 기록 번호', '복원된 기록을 읽고 네 자리 번호를 찾아 도서관 문을 열어라.', '암호는 별도로 표시되어 있지 않고 본문 안에 숨어 있습니다.'];
     if (!state.flags.libraryBooksSolved) return ['뜻풀이 서가', '주어진 영영풀이에 해당하는 단어가 포함된 책을 고르시오.', '각 뜻풀이의 정답 단어가 제목에 직접 들어 있는 책을 순서대로 선택하세요.'];
     if (!state.flags.librarySolved) return ['방향 자물쇠', '서가의 시작점에서 선택한 세 책을 차례로 지나 잠금장치까지 이동하라.', '격자에서 한 칸씩 움직인 방향을 입력하세요.'];
     if (!state.flags.digitalSolved) return ['끊어진 문장', '출입 카드로 DS실에 들어가 세 문장을 복구하라.', '5과의 의사소통 표현, 현재완료와 to부정사를 떠올리세요.'];
@@ -545,9 +545,9 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
     if (type === 'lockerPins') body = lockerPinsMarkup();
     if (type === 'workspaceShelf') body = workspaceShelfMarkup();
     if (type === 'workspaceLock') body = workspaceLockMarkup();
-    if (type === 'pageA') body = `<div class="eyebrow">습득한 단서</div><h2>찢어진 종이 A</h2><div class="clue-paper">Ethiopia was the <strong>ONLY</strong> African country<br>to send soldiers during the Korean <span class="cut">War...</span><br><br><span class="cut">The me...</span> has THREE round <span class="cut">roofs...</span></div><p>오른쪽 절반이 있어야 내용을 읽을 수 있다.</p><div class="modal-actions"><button class="button primary" data-action="closeModal">접어 둔다</button></div>`;
-    if (type === 'restoredNote') body = `<div class="eyebrow">조합 성공</div><h2>복원된 우정의 기록</h2><div class="clue-paper">Ethiopia was the <strong>ONLY</strong> African country to send soldiers.<br><br>The <strong>SECOND</strong> floor displays cultural items.<br><br>The house has <strong>THREE</strong> round roofs.<br><br>The memorial was built in <strong>2006</strong>.<br><br><em>“밑줄 친 네 부분을 한 자리씩 읽어라.”</em></div><p>서수는 숫자로, 연도는 마지막 한 자리로 바꾸면 네 자리 암호가 된다.</p><div class="modal-actions"><button class="button primary" data-action="closeModal">기록한다</button></div>`;
-    if (type === 'libraryKeypad') body = `<div class="eyebrow">도서관 방화문</div><h2>4자리 기록 번호</h2><p>복원된 종이의 붉은 밑줄 네 개가 순서대로 열쇠가 된다.</p><label class="field-label" for="codeAnswer">암호 입력</label><input id="codeAnswer" class="code-input" inputmode="numeric" maxlength="4" autocomplete="off"><p class="error" data-error></p><div class="modal-actions"><button class="button" data-action="closeModal">취소</button><button class="button primary" data-action="submitCode">해제</button></div>`;
+    if (type === 'pageA') body = `<div class="eyebrow">습득한 단서</div><h2>찢어진 종이 A</h2><div class="clue-paper">One African country sent soldiers<br>to Korea: <span class="cut">Ethiopia...</span><br><br><span class="cut">The traditional...</span> has three round <span class="cut">roofs...</span></div><p>오른쪽 절반이 있어야 내용을 읽을 수 있다.</p><div class="modal-actions"><button class="button primary" data-action="closeModal">접어 둔다</button></div>`;
+    if (type === 'restoredNote') body = `<div class="eyebrow">조합 성공</div><h2>복원된 우정의 기록</h2><div class="clue-paper">One African country sent soldiers to Korea: Ethiopia.<br><br>The memorial connects two countries: Korea and Ethiopia.<br><br>The traditional house has three round roofs.<br><br>Six letters form the word FRIEND.<br><br><span class="record-whisper">“Read each sentence in order. The record itself holds the code.”</span></div><p>문장에 따로 표시된 부분은 없다. 내용을 차례로 읽고 기록 번호를 찾아야 한다.</p><div class="modal-actions"><button class="button primary" data-action="closeModal">기록한다</button></div>`;
+    if (type === 'libraryKeypad') body = `<div class="eyebrow">도서관 방화문</div><h2>기록 속 4자리 번호</h2><p>종이에 적힌 네 문장을 차례로 읽고, 각 문장에서 한 자리씩 찾아 입력하라.</p><label class="field-label" for="codeAnswer">암호 입력</label><input id="codeAnswer" class="code-input" inputmode="numeric" maxlength="4" autocomplete="off"><p class="error" data-error></p><div class="modal-actions"><button class="button" data-action="closeModal">취소</button><button class="button primary" data-action="submitCode">해제</button></div>`;
     if (type === 'shelfPuzzle') body = bookOrderMarkup();
     if (type === 'libraryChaseLock') body = libraryChaseLockMarkup();
     if (type === 'sequence') body = sequenceMarkup();
@@ -653,7 +653,7 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
     const [,, base] = objective();
     if (!state.flags.lockerOpened && !state.flags.deskPatternSeen) return '교실 앞쪽 화면에서 뒤쪽 8개 책상을 조사하세요. 다른 의자보다 뒤로 빠져 나온 의자가 네 개 있습니다.';
     if (!state.flags.lockerOpened && state.flags.deskPatternSeen) return '교실의 2×4 책상 배열에서 의자가 빠져 나온 네 자리와 똑같은 위치의 사물함 핀을 누르세요.';
-    if (!state.flags.libraryOpen && state.flags.noteCombined) return 'ONLY=1, SECOND=2, THREE=3, 그리고 2006에서는 마지막 숫자만 읽습니다.';
+    if (!state.flags.libraryOpen && state.flags.noteCombined) return '모든 숫자 표현은 기수입니다. 각 문장에서 수량을 나타내는 영어 단어를 하나씩 찾아 문장 순서대로 읽어 보세요.';
     if (!state.flags.libraryBooksSolved && state.flags.libraryOpen) return '각 뜻풀이의 답은 tourist, soldier, honor입니다. 이 단어가 제목 안에 그대로 들어 있는 책을 1번부터 차례로 고르세요.';
     if (!state.flags.librarySolved && state.flags.libraryBooksSolved) return 'START에서 EXIT까지 빈 통로만 따라가세요. 정답은 → ↑ → ↑ ↑ → 입니다.';
     if (!state.flags.digitalSolved && state.flags.librarySolved) return '현재완료는 has had, 목적을 나타내는 to부정사는 to see입니다.';
@@ -790,7 +790,7 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
 
   function pickup(item) {
     addItem(item);
-    if (item === 'pageA') { state.flags.pageA = true; state.log = '종이 한쪽이 찢겨 있다. 반대쪽 조각이 학교 어딘가에 있다.'; addJournal('종이 A: ONLY, THREE가 붉게 표시되어 있다.'); openModal('pageA'); }
+    if (item === 'pageA') { state.flags.pageA = true; state.log = '종이 한쪽이 찢겨 있다. 반대쪽 조각이 학교 어딘가에 있다.'; addJournal('종이 A: 에티오피아와 기념관에 관한 문장 일부가 보인다.'); openModal('pageA'); }
     if (item === 'lockerKey') { state.flags.keyFound = true; state.log = '책상 서랍 안에 숨겨진 3번 사물함 열쇠다. 홈베이스에서 맞는 문을 찾아야 한다.'; addJournal('교실 책상 서랍에서 “3”이 새겨진 열쇠를 발견했다.'); render(); }
   }
 
@@ -851,11 +851,17 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
     state.flags.lockerOpened = true; state.modal = null; state.lockerPins = [];
     state.log = '네 핀이 동시에 들어가며 3번 사물함이 열렸다. 종이의 나머지 절반과 청색 필터가 들어 있다.';
     addJournal('8핀 자물쇠: 교실에서 의자가 빠져 있던 네 자리와 같은 버튼을 눌러 해제했다.');
-    addJournal('종이 B: SECOND, 2006이 붉게 표시되어 있다.');
+    addJournal('종이 B: 전시 장소와 기념관 건립에 관한 문장 일부가 보인다.');
     notify('3번 사물함이 열렸다.'); render();
   }
 
   function selectItem(item) {
+    if (item === 'restoredNote') {
+      state.selected = [];
+      state.log = '복원된 기록을 다시 펼쳤다. 네 문장 안에 숨은 기록 번호를 확인할 수 있다.';
+      openModal('restoredNote');
+      return;
+    }
     if (state.selected.includes(item)) state.selected = state.selected.filter(id => id !== item);
     else { if (state.selected.length === 2) state.selected.shift(); state.selected.push(item); }
     state.log = `${ITEMS[item].name}: ${ITEMS[item].description}`; render();
@@ -864,7 +870,7 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
   function combineItems() {
     const pair = [...state.selected].sort().join('+');
     if (pair === ['pageA', 'pageB'].sort().join('+')) {
-      removeItem('pageA'); removeItem('pageB'); addItem('restoredNote'); state.flags.noteCombined = true; state.selected = []; addJournal('복원 기록: ONLY → SECOND → THREE → 2006. 한 자리 숫자로 읽으면 1-2-3-6.'); state.log = '두 조각의 찢어진 면이 정확히 맞는다. 네 개의 밑줄이 하나의 암호를 만든다.'; openModal('restoredNote');
+      removeItem('pageA'); removeItem('pageB'); addItem('restoredNote'); state.flags.noteCombined = true; state.selected = []; addJournal('복원 기록: 네 문장이 모두 이어졌다. 기록 번호는 본문 안에서 찾아야 한다.'); state.log = '두 조각의 찢어진 면이 정확히 맞는다. 평범해 보이는 네 문장 어딘가에 암호가 숨어 있다.'; openModal('restoredNote');
     } else { state.log = '두 물건은 서로 맞지 않는다.'; state.selected = []; render(); }
   }
 
@@ -876,8 +882,8 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
 
   function submitCode() {
     const answer = root.querySelector('#codeAnswer')?.value.trim();
-    if (answer !== '1236') return error('짧은 경고음이 난다. 밑줄 네 개를 다시 한 자리씩 바꾸어 보자.');
-    state.flags.libraryOpen = true; state.modal = null; addJournal('도서관 문 암호 1236: ONLY(1), SECOND(2), THREE(3), 2006의 끝자리(6).'); state.log = '잠금 장치가 풀렸다. 도서관 안쪽에서 푸른 표식이 반짝인다.'; notify('도서관 문이 열렸다.'); render();
+    if (answer !== '1236') return error('짧은 경고음이 난다. 네 문장을 차례로 읽으며 수량을 나타내는 기수를 하나씩 다시 찾아보자.');
+    state.flags.libraryOpen = true; state.modal = null; addJournal('도서관 문 암호 1236: one(1), two(2), three(3), six(6).'); state.log = '잠금 장치가 풀렸다. 도서관 안쪽에서 푸른 표식이 반짝인다.'; notify('도서관 문이 열렸다.'); render();
   }
 
   function inspectShelf() {
