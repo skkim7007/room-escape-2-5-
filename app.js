@@ -263,7 +263,7 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
 
   const root = document.querySelector('#app');
   const toastNode = document.querySelector('#toast');
-  const SAVE_KEY = 'ocean-night-record-v26';
+  const SAVE_KEY = 'ocean-night-record-v28';
   const MAX_SLOTS = 7;
 
   const ITEMS = {
@@ -455,7 +455,7 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
     if (!state.flags.lockerOpened) return ['여덟 개의 자리', '교실의 책상 배열을 관찰하고 3번 사물함의 8핀 자물쇠를 열어라.', '열쇠만으로는 부족합니다. 의자가 빠져 나온 네 자리도 기억하세요.'];
     if (!state.flags.noteCombined) return ['둘로 나뉜 기록', '종이 조각 두 장을 인벤토리에서 선택해 조합하라.', '아이템 두 개를 고른 뒤 ‘조합’을 누르세요.'];
     if (!state.flags.libraryOpen) return ['네 개의 밑줄', '복원된 기록의 강조어를 숫자로 바꿔 도서관 문을 열어라.', '영어 서수와 연도를 관찰하세요.'];
-    if (!state.flags.libraryBooksSolved) return ['뜻풀이 서가', '세 뜻풀이의 답을 추리하고, 양 끝 글자가 같은 책을 순서대로 골라라.', '문제를 풀면서 책 제목의 첫 글자와 끝 글자를 함께 관찰하세요.'];
+    if (!state.flags.libraryBooksSolved) return ['뜻풀이 서가', '주어진 영영풀이에 해당하는 단어가 포함된 책을 고르시오.', '각 뜻풀이의 정답 단어가 제목에 직접 들어 있는 책을 순서대로 선택하세요.'];
     if (!state.flags.librarySolved) return ['방향 자물쇠', '서가의 시작점에서 선택한 세 책을 차례로 지나 잠금장치까지 이동하라.', '격자에서 한 칸씩 움직인 방향을 입력하세요.'];
     if (!state.flags.digitalSolved) return ['끊어진 문장', '출입 카드로 DS실에 들어가 세 문장을 복구하라.', '5과의 의사소통 표현, 현재완료와 to부정사를 떠올리세요.'];
     if (!state.flags.dreamSolved) return ['방석 아래의 전류', '꿈나래터의 세 흔적을 모아 건전지가 숨은 방석 번호를 추리하라.', '아래 계단, 오른쪽 수납장, 위쪽 난간을 각각 조사하세요.'];
@@ -580,14 +580,14 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
   }
 
   const libraryBooks = [
-    ['border', 'Silent Border'],
-    ['valor', 'Hall of Valor'],
+    ['tourist', "A Tourist's Journey"],
+    ['soldier', 'The Brave Soldier'],
     ['tales', 'Tales of Ethiopia'],
     ['night', 'The Longest Night'],
     ['stars', 'River of Stars'],
     ['memory', 'Hidden Memory'],
     ['map', "A Visitor's Map"],
-    ['time', 'Steps Through Time'],
+    ['honor', 'A Matter of Honor'],
     ['friendship', 'Korea and Ethiopia']
   ];
 
@@ -599,7 +599,7 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
       'a person who wears a uniform and protects a country',
       'to show great respect to someone'
     ];
-    return `<div class="eyebrow">청색 필터로 드러난 책 자물쇠</div><h2>문제를 풀며 책을 골라라</h2><p>각 뜻풀이의 영어 답을 머릿속으로 찾은 뒤, 그 답과 <em>첫 글자·끝 글자가 같은 제목</em>을 아래 책장에서 순서대로 고르세요.</p><ol class="shelf-clues">${clues.map((clue, index) => `<li class="${chosen[index] ? 'filled' : ''}"><b>${index + 1}</b><span>${clue}</span><strong>${chosen[index] ? title(chosen[index]) : '이 문제에 맞는 책을 선택'}</strong></li>`).join('')}</ol><div class="book-shelf" aria-label="책 제목 목록">${libraryBooks.map(([id, bookTitle]) => `<button class="book-spine ${chosen.includes(id) ? 'chosen' : ''}" data-action="addBook" data-value="${id}" ${chosen.includes(id) ? 'disabled' : ''}>${bookTitle}</button>`).join('')}</div><p class="book-note">책에는 번호도 설명도 없다. 뜻풀이의 답과 제목 양 끝의 알파벳을 비교하자. 아래 선택 목록의 책을 누르면 취소할 수 있다.</p><div class="book-order" aria-label="선택한 책 순서">${chosen.length ? chosen.map((id, index) => `<button data-action="removeBook" data-value="${index}" aria-label="${index + 1}번 선택 취소"><b>${index + 1}</b>${title(id)}</button>`).join('') : '<span>첫 번째 문제에 맞는 책부터 누르세요.</span>'}</div><p class="error" data-error></p><div class="modal-actions"><button class="button" data-action="resetBooks">순서 지우기</button><button class="button" data-action="closeModal">잠시 닫기</button><button class="button primary" data-action="submitBooks">세 권을 당긴다</button></div>`;
+    return `<div class="eyebrow">청색 필터로 드러난 책 자물쇠</div><h2 class="book-instruction">주어진 영영풀이에 해당하는 단어가 포함된 책을 고르시오.</h2><p>1번부터 뜻풀이의 정답을 찾고, 그 <em>단어가 제목에 포함된 책</em>을 바로 선택하세요.</p><ol class="shelf-clues">${clues.map((clue, index) => `<li class="${chosen[index] ? 'filled' : ''}"><b>${index + 1}</b><span>${clue}</span><strong>${chosen[index] ? title(chosen[index]) : '정답 단어가 포함된 책을 선택'}</strong></li>`).join('')}</ol><div class="book-shelf" aria-label="책 제목 목록">${libraryBooks.map(([id, bookTitle]) => `<button class="book-spine ${chosen.includes(id) ? 'chosen' : ''}" data-action="addBook" data-value="${id}" ${chosen.includes(id) ? 'disabled' : ''}>${bookTitle}</button>`).join('')}</div><p class="book-note">선택한 책은 아래 칸에 문제 순서대로 놓입니다. 잘못 고른 책은 아래 선택 목록에서 다시 누르면 취소할 수 있습니다.</p><div class="book-order" aria-label="선택한 책 순서">${chosen.length ? chosen.map((id, index) => `<button data-action="removeBook" data-value="${index}" aria-label="${index + 1}번 선택 취소"><b>${index + 1}</b>${title(id)}</button>`).join('') : '<span>1번 영영풀이에 맞는 책부터 고르세요.</span>'}</div><p class="error" data-error></p><div class="modal-actions"><button class="button" data-action="resetBooks">선택 초기화</button><button class="button" data-action="closeModal">잠시 닫기</button><button class="button primary" data-action="submitBooks">선택한 책 확인</button></div>`;
   }
 
   function libraryChaseLockMarkup() {
@@ -654,7 +654,7 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
     if (!state.flags.lockerOpened && !state.flags.deskPatternSeen) return '교실 앞쪽 화면에서 뒤쪽 8개 책상을 조사하세요. 다른 의자보다 뒤로 빠져 나온 의자가 네 개 있습니다.';
     if (!state.flags.lockerOpened && state.flags.deskPatternSeen) return '교실의 2×4 책상 배열에서 의자가 빠져 나온 네 자리와 똑같은 위치의 사물함 핀을 누르세요.';
     if (!state.flags.libraryOpen && state.flags.noteCombined) return 'ONLY=1, SECOND=2, THREE=3, 그리고 2006에서는 마지막 숫자만 읽습니다.';
-    if (!state.flags.libraryBooksSolved && state.flags.libraryOpen) return '각 뜻풀이의 답은 tourist, soldier, honor입니다. T…T, S…R, H…R과 같은 양 끝 글자를 가진 제목을 순서대로 찾으세요.';
+    if (!state.flags.libraryBooksSolved && state.flags.libraryOpen) return '각 뜻풀이의 답은 tourist, soldier, honor입니다. 이 단어가 제목 안에 그대로 들어 있는 책을 1번부터 차례로 고르세요.';
     if (!state.flags.librarySolved && state.flags.libraryBooksSolved) return 'START에서 EXIT까지 빈 통로만 따라가세요. 정답은 → ↑ → ↑ ↑ → 입니다.';
     if (!state.flags.digitalSolved && state.flags.librarySolved) return '현재완료는 has had, 목적을 나타내는 to부정사는 to see입니다.';
     if (!state.flags.dreamSolved && state.flags.digitalSolved) {
@@ -675,7 +675,7 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
     if (state.screen === 'ending') { renderEnding(); return; }
     const [chapter, title, sub] = objective();
     const scene = SCENES[state.scene];
-    root.innerHTML = `<main class="game"><div class="scene ${transitioning ? 'is-transitioning' : ''}"><img class="scene-image" src="${scene.image}" alt="${scene.name}" draggable="false">${hotspots().map(hotspotMarkup).join('')}</div><div class="grain"></div><div class="hud"><div class="topbar"><section class="objective"><div class="eyebrow">${chapter}</div><strong>${title}</strong><small>${sub}</small></section><div class="top-actions"><div class="status-chip safety" title="토끼에게 두 번 잡히면 게임오버">안전도 ${state.catches === 0 ? '♥♥' : '♥♡'}</div><div class="status-chip">◷ <b data-clock>${timeText()}</b></div><button class="icon-button sound-button" data-action="toggleSound" aria-label="${state.soundOn ? 'BGM 끄기' : 'BGM 켜기'}">${state.soundOn ? '♪' : '×'} <span>${state.soundOn ? 'BGM' : '음소거'}</span></button><button class="icon-button" data-action="showHint" aria-label="힌트">? <span>힌트</span></button><button class="icon-button" data-action="showJournal" aria-label="조사 수첩">▤ <span>수첩</span></button></div></div><div class="scene-label">${scene.name}</div><div class="log-box" aria-live="polite"><strong>조사</strong>${state.log}</div></div><section class="inventory-wrap"><div class="inventory-head"><span>INVENTORY · ${state.inventory.length}/${MAX_SLOTS}</span><span>${state.selected.length ? `${state.selected.length}개 선택됨` : '아이템을 선택하세요'}</span></div><div class="inventory">${inventoryMarkup()}<button class="combine-button" data-action="combine" ${state.selected.length !== 2 ? 'disabled' : ''}>조합</button></div></section>${modalMarkup()}</main>`;
+    root.innerHTML = `<main class="game scene-${state.scene}"><div class="scene ${transitioning ? 'is-transitioning' : ''}"><img class="scene-image" src="${scene.image}" alt="${scene.name}" draggable="false">${hotspots().map(hotspotMarkup).join('')}</div><div class="grain"></div><div class="hud"><div class="topbar"><section class="objective"><div class="eyebrow">${chapter}</div><strong>${title}</strong><small>${sub}</small></section><div class="top-actions"><div class="status-chip safety" title="토끼에게 두 번 잡히면 게임오버">안전도 ${state.catches === 0 ? '♥♥' : '♥♡'}</div><div class="status-chip">◷ <b data-clock>${timeText()}</b></div><button class="icon-button sound-button" data-action="toggleSound" aria-label="${state.soundOn ? 'BGM 끄기' : 'BGM 켜기'}">${state.soundOn ? '♪' : '×'} <span>${state.soundOn ? 'BGM' : '음소거'}</span></button><button class="icon-button" data-action="showHint" aria-label="힌트">? <span>힌트</span></button><button class="icon-button" data-action="showJournal" aria-label="조사 수첩">▤ <span>수첩</span></button></div></div><div class="scene-label">${scene.name}</div><div class="log-box" aria-live="polite"><strong>조사</strong>${state.log}</div></div><section class="inventory-wrap"><div class="inventory-head"><span>INVENTORY · ${state.inventory.length}/${MAX_SLOTS}</span><span>${state.selected.length ? `${state.selected.length}개 선택됨` : '아이템을 선택하세요'}</span></div><div class="inventory">${inventoryMarkup()}<button class="combine-button" data-action="combine" ${state.selected.length !== 2 ? 'disabled' : ''}>조합</button></div></section>${modalMarkup()}</main>`;
     bind(); save();
   }
 
@@ -890,9 +890,9 @@ loadState(); render(); if(state.screen==='game') startTimer(); registerWebMCP();
 
   function submitBooks() {
     const chosen = (state.bookChosen || []).join('|');
-    if (chosen !== 'night|border|valor') return error('서가가 꿈쩍하지 않는다. 각 뜻풀이의 영어 답을 다시 생각하고, 그 단어의 첫·끝 글자를 책 제목의 양 끝과 비교하자.');
+    if (chosen !== 'tourist|soldier|honor') return error('서가가 꿈쩍하지 않는다. 각 영영풀이의 정답 단어가 책 제목 안에 그대로 포함되어 있는지 다시 확인하자.');
     state.flags.libraryBooksSolved = true;
-    addJournal('도서관 책 순서: tourist(T…T) → The Longest Night, soldier(S…R) → Silent Border, honor(H…R) → Hall of Valor.');
+    addJournal("도서관 책 순서: tourist → A Tourist's Journey, soldier → The Brave Soldier, honor → A Matter of Honor.");
     notify('발소리가 가까워진다!'); startLibraryChase();
   }
 
